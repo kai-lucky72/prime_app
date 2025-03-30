@@ -13,31 +13,22 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "clients")
-public class Client {
+@Table(name = "manager_assigned_agents", uniqueConstraints = {
+    @UniqueConstraint(name = "uk_manager_agent", columnNames = {"manager_id", "agent_id"})
+})
+public class ManagerAssignedAgent {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "full_name", nullable = false)
-    private String fullName;
-
-    @Column(name = "contact_info", nullable = false)
-    private String contactInfo;
-
-    @Column(name = "insurance_type", nullable = false)
-    private String insuranceType;
-
-    @Column(name = "location_of_interaction", nullable = false)
-    private String locationOfInteraction;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "manager_id", nullable = false)
+    private User manager;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "agent_id", nullable = false)
     private User agent;
 
-    @Column(name = "time_of_interaction", nullable = false)
-    private LocalDateTime timeOfInteraction;
-    
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
@@ -49,15 +40,10 @@ public class Client {
         LocalDateTime now = LocalDateTime.now();
         createdAt = now;
         updatedAt = now;
-        
-        // Set interaction time to now if not provided
-        if (timeOfInteraction == null) {
-            timeOfInteraction = now;
-        }
     }
 
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
-}
+} 

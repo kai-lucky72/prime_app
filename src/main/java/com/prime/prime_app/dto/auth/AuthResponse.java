@@ -1,12 +1,9 @@
 package com.prime.prime_app.dto.auth;
 
-import com.prime.prime_app.entities.Role;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.util.Set;
 
 @Data
 @Builder
@@ -20,7 +17,7 @@ public class AuthResponse {
     private String email;
     private String firstName;
     private String lastName;
-    private Set<Role> roles;
+    private String role;
     private String message;
 
     @Builder.Default
@@ -28,7 +25,7 @@ public class AuthResponse {
 
     public static AuthResponse of(String accessToken, String refreshToken, Long expiresIn, 
                                 String email, String firstName, String lastName, 
-                                Set<Role> roles, String message) {
+                                String role, String message) {
         return AuthResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
@@ -36,7 +33,7 @@ public class AuthResponse {
                 .email(email)
                 .firstName(firstName)
                 .lastName(lastName)
-                .roles(roles)
+                .role(role)
                 .message(message)
                 .build();
     }

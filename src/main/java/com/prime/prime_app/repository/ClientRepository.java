@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,4 +30,15 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
     
     @Query("SELECT c.insuranceType, COUNT(c) FROM Client c WHERE c.agent = ?1 GROUP BY c.insuranceType")
     List<Object[]> countClientsByInsuranceType(User agent);
+
+    List<Client> findByAgent(User agent);
+    
+    @Query("SELECT COUNT(c) FROM Client c WHERE c.agent = ?1")
+    Long countByAgent(User agent);
+    
+    @Query("SELECT COUNT(c) FROM Client c WHERE c.agent = ?1 AND c.timeOfInteraction BETWEEN ?2 AND ?3")
+    Long countByAgentAndTimeRange(User agent, LocalDateTime startTime, LocalDateTime endTime);
+    
+    @Query("SELECT DISTINCT c.insuranceType FROM Client c WHERE c.agent = ?1 AND c.timeOfInteraction BETWEEN ?2 AND ?3")
+    List<String> findInsuranceTypesByAgentAndTimeRange(User agent, LocalDateTime startTime, LocalDateTime endTime);
 }

@@ -3,9 +3,7 @@ package com.prime.prime_app.service;
 import com.prime.prime_app.dto.auth.AuthRequest;
 import com.prime.prime_app.dto.auth.AuthResponse;
 import com.prime.prime_app.dto.auth.RegisterRequest;
-import com.prime.prime_app.entities.Role;
 import com.prime.prime_app.entities.User;
-import com.prime.prime_app.repository.RoleRepository;
 import com.prime.prime_app.repository.UserRepository;
 import com.prime.prime_app.security.JwtUtils;
 import jakarta.persistence.EntityNotFoundException;
@@ -19,14 +17,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
     private final AuthenticationManager authenticationManager;
@@ -42,10 +37,12 @@ public class AuthService {
         User user = User.builder()
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
+                .name(request.getFirstName() + " " + request.getLastName())
                 .email(request.getEmail())
+                .username(request.getEmail()) // Default to using email as username
                 .password(passwordEncoder.encode(request.getPassword()))
                 .phoneNumber(request.getPhoneNumber())
-                .roles(new HashSet<>(Set.of(getOrCreateRole(Role.RoleType.ROLE_AGENT))))
+                .role(User.UserRole.AGENT) // Default role is AGENT
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -63,7 +60,7 @@ public class AuthService {
                 savedUser.getEmail(),
                 savedUser.getFirstName(),
                 savedUser.getLastName(),
-                savedUser.getRoles(),
+                savedUser.getRole().name(),
                 "User registered successfully"
         );
     }
@@ -86,7 +83,7 @@ public class AuthService {
                 user.getEmail(),
                 user.getFirstName(),
                 user.getLastName(),
-                user.getRoles(),
+                user.getRole().name(),
                 "Authentication successful"
         );
     }
@@ -97,8 +94,8 @@ public class AuthService {
             throw new IllegalArgumentException("Invalid refresh token");
         }
 
-        String email = jwtUtils.extractUsername(refreshToken);
-        User user = userRepository.findByEmail(email)
+        String username = jwtUtils.extractUsername(refreshToken);
+        User user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
         String newAccessToken = jwtUtils.generateToken(user);
@@ -111,14 +108,9 @@ public class AuthService {
                 user.getEmail(),
                 user.getFirstName(),
                 user.getLastName(),
-                user.getRoles(),
+                user.getRole().name(),
                 "Token refreshed successfully"
         );
-    }
-
-    private Role getOrCreateRole(Role.RoleType roleType) {
-        return roleRepository.findByName(roleType)
-                .orElseGet(() -> roleRepository.save(Role.builder().name(roleType).build()));
     }
 
     public boolean validateToken(String token) {
@@ -132,5 +124,17 @@ public class AuthService {
             throw new IllegalStateException("No authenticated user found");
         }
         return (User) authentication.getPrincipal();
+    }
+    
+    public boolean isUserAdmin(User user) {
+        return user.getRole() == User.UserRole.ADMIN;
+    }
+    
+    public boolean isUserManager(User user) {
+        return user.getRole() == User.UserRole.MANAGER;
+    }
+    
+    public boolean isUserAgent(User user) {
+        return user.getRole() == User.UserRole.AGENT;
     }
 }
