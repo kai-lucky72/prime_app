@@ -1,7 +1,7 @@
 package com.prime.prime_app.dto.client;
 
 import com.prime.prime_app.entities.Client.InsuranceType;
-import com.prime.prime_app.entities.Client.PolicyStatus;
+import com.prime.prime_app.entities.PolicyStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,6 +21,8 @@ public class ClientResponse {
     private String email;
     private String phoneNumber;
     private String address;
+    private String location;
+    private String sector;
     private LocalDate dateOfBirth;
     private InsuranceType insuranceType;
     private String policyNumber;

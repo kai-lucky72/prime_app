@@ -6,10 +6,7 @@ import com.prime.prime_app.dto.agent.ClientEntryRequest;
 import com.prime.prime_app.dto.agent.ClientEntryResponse;
 import com.prime.prime_app.dto.agent.PerformanceReportRequest;
 import com.prime.prime_app.dto.agent.PerformanceReportResponse;
-import com.prime.prime_app.entities.Client;
-import com.prime.prime_app.entities.ManagerAssignedAgent;
-import com.prime.prime_app.entities.User;
-import com.prime.prime_app.entities.WorkLog;
+import com.prime.prime_app.entities.*;
 import com.prime.prime_app.repository.ClientRepository;
 import com.prime.prime_app.repository.ManagerAssignedAgentRepository;
 import com.prime.prime_app.repository.UserRepository;
@@ -98,14 +95,26 @@ public class AgentService {
         WorkLog workLog = workLogRepository.findByAgentAndDate(agent, today)
                 .orElseThrow(() -> new IllegalStateException("Attendance not submitted for today"));
         
+        // Split full name into first and last name
+        String[] nameParts = request.getFull_name().split("\\s+", 2);
+        String firstName = nameParts[0];
+        String lastName = nameParts.length > 1 ? nameParts[1] : "";
+
         // Create and save client
         Client client = Client.builder()
-                .fullName(request.getFull_name())
-                .contactInfo(request.getContact_info())
-                .insuranceType(request.getInsurance_type())
-                .locationOfInteraction(request.getLocation_of_interaction())
+                .firstName(firstName)
+                .lastName(lastName)
+                .phoneNumber(request.getContact_info())
+                .insuranceType(Client.InsuranceType.valueOf(request.getInsurance_type().toUpperCase()))
+                .address(request.getLocation_of_interaction())
                 .agent(agent)
-                .timeOfInteraction(LocalDateTime.now())
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .policyStatus(PolicyStatus.PENDING)
+                .policyStartDate(LocalDate.now())
+                .policyEndDate(LocalDate.now().plusYears(1))
+                .premiumAmount(0.0) // Will be set later
+                .dateOfBirth(LocalDate.now()) // Should be updated later
                 .build();
                 
         clientRepository.save(client);

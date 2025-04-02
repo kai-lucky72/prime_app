@@ -140,6 +140,8 @@ public class ClientService {
                 .email(request.getEmail())
                 .phoneNumber(request.getPhoneNumber())
                 .address(request.getAddress())
+                .location(request.getLocation())
+                .sector(request.getSector())
                 .dateOfBirth(request.getDateOfBirth())
                 .insuranceType(request.getInsuranceType())
                 .policyNumber(request.getPolicyNumber())
@@ -158,6 +160,8 @@ public class ClientService {
                 .email(client.getEmail())
                 .phoneNumber(client.getPhoneNumber())
                 .address(client.getAddress())
+                .location(client.getLocation())
+                .sector(client.getSector())
                 .dateOfBirth(client.getDateOfBirth())
                 .insuranceType(client.getInsuranceType())
                 .policyNumber(client.getPolicyNumber())
@@ -182,6 +186,8 @@ public class ClientService {
         client.setLastName(request.getLastName());
         client.setPhoneNumber(request.getPhoneNumber());
         client.setAddress(request.getAddress());
+        client.setLocation(request.getLocation());
+        client.setSector(request.getSector());
         client.setInsuranceType(request.getInsuranceType());
         client.setPolicyStartDate(request.getPolicyStartDate());
         client.setPolicyEndDate(request.getPolicyEndDate());

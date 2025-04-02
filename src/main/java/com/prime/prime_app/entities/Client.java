@@ -6,39 +6,71 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+@Entity
+@Table(name = "clients")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
-@Table(name = "clients")
 public class Client {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "full_name", nullable = false)
-    private String fullName;
+    @Column(nullable = false)
+    private String firstName;
 
-    @Column(name = "contact_info", nullable = false)
-    private String contactInfo;
+    @Column(nullable = false)
+    private String lastName;
 
-    @Column(name = "insurance_type", nullable = false)
-    private String insuranceType;
+    @Column(unique = true)
+    private String email;
 
-    @Column(name = "location_of_interaction", nullable = false)
-    private String locationOfInteraction;
+    @Column(nullable = false)
+    private String phoneNumber;
+
+    private String address;
+    
+    @Column(nullable = false)
+    private String location;
+
+    @Column
+    private String sector;
+
+    @Column(nullable = false)
+    private LocalDate dateOfBirth;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private InsuranceType insuranceType;
+
+    @Column(unique = true)
+    private String policyNumber;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private PolicyStatus policyStatus;
+
+    @Column(nullable = false)
+    private LocalDate policyStartDate;
+
+    @Column(nullable = false)
+    private LocalDate policyEndDate;
+
+    @Column(nullable = false)
+    private Double premiumAmount;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "agent_id", nullable = false)
     private User agent;
-
+    
     @Column(name = "time_of_interaction", nullable = false)
     private LocalDateTime timeOfInteraction;
-    
-    @Column(nullable = false)
+
+    @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @Column(nullable = false)
@@ -46,18 +78,29 @@ public class Client {
 
     @PrePersist
     protected void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
-        createdAt = now;
-        updatedAt = now;
-        
-        // Set interaction time to now if not provided
-        if (timeOfInteraction == null) {
-            timeOfInteraction = now;
-        }
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
     }
 
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+    }
+
+    public enum InsuranceType {
+        LIFE,
+        HEALTH,
+        AUTO,
+        HOME,
+        BUSINESS
+    }
+    
+    // Convenience getter methods
+    public String getName() {
+        return firstName + " " + lastName;
+    }
+    
+    public String getContactNumber() {
+        return phoneNumber;
     }
 }

@@ -19,4 +19,13 @@ public class ReportsRequest {
     
     @NotBlank(message = "End date is required")
     private String end_date;
+    
+    // Accessor methods for snake_case fields
+    public String getStartDate() {
+        return start_date;
+    }
+    
+    public String getEndDate() {
+        return end_date;
+    }
 } 

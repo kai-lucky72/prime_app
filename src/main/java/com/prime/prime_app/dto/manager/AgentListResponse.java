@@ -8,19 +8,22 @@ import java.util.List;
 
 @Data
 @Builder
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 public class AgentListResponse {
     private List<AgentDto> agents;
     
     @Data
     @Builder
-    @AllArgsConstructor
     @NoArgsConstructor
+    @AllArgsConstructor
     public static class AgentDto {
         private String id;
         private String name;
-        private String attendance_status;
-        private int clients_served;
+        private String email;
+        private String phoneNumber;
+        private boolean isLeader;
+        private String attendanceStatus;
+        private Integer clientsServed;
     }
 } 

@@ -11,16 +11,16 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ReportsResponse {
-    private List<AgentReportDto> agents_reports;
+    private List<AgentReportDto> agentReports;
     
     @Data
     @Builder
     @AllArgsConstructor
     @NoArgsConstructor
     public static class AgentReportDto {
-        private String agent_id;
-        private int total_clients_engaged;
-        private List<String> sectors_worked_in;
-        private int days_worked;
+        private String agentId;
+        private int totalClientsEngaged;
+        private List<String> sectorsWorkedIn;
+        private int daysWorked;
     }
 } 

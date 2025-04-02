@@ -40,36 +40,22 @@ public class AdminController {
         User currentUser = authService.getCurrentUser();
         log.debug("Admin {} requesting managers list", currentUser.getEmail());
         
-        // In a real implementation, this would fetch data from the database
-        // For now, we'll just create a dummy response
+        ManagerListResponse response = adminService.getAllManagers();
         
-        List<ManagerListResponse.ManagerDto> managers = new ArrayList<>();
-        managers.add(ManagerListResponse.ManagerDto.builder()
-                .id("1")
-                .name("Alice Johnson")
-                .build());
-        managers.add(ManagerListResponse.ManagerDto.builder()
-                .id("2")
-                .name("Bob Williams")
-                .build());
-        
-        return ResponseEntity.ok(ManagerListResponse.builder()
-                .managers(managers)
-                .build());
+        return ResponseEntity.ok(response);
     }
     
     @Operation(
         summary = "Add manager",
-        description = "Add a new manager"
+        description = "Add a new manager with required details"
     )
     @PostMapping("/managers")
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     public ResponseEntity<ManagerResponse> addManager(@Valid @RequestBody AddManagerRequest request) {
         User currentUser = authService.getCurrentUser();
-        log.debug("Admin {} adding new manager {}", currentUser.getEmail(), request.getName());
+        log.debug("Admin {} adding new manager with workId {}", currentUser.getEmail(), request.getWorkId());
         
-        // In a real implementation, this would update the database
-        // For now, we'll just create a dummy response
+        adminService.addManager(request);
         
         return ResponseEntity.ok(ManagerResponse.builder()
                 .status("Manager added successfully")
@@ -78,19 +64,18 @@ public class AdminController {
     
     @Operation(
         summary = "Remove manager",
-        description = "Remove a manager"
+        description = "Remove a manager and their associated agents"
     )
-    @DeleteMapping("/managers")
+    @DeleteMapping("/managers/{managerId}")
     @PreAuthorize("hasRole('ROLE_ADMIN')")
-    public ResponseEntity<ManagerResponse> removeManager(@Valid @RequestBody DeleteManagerRequest request) {
+    public ResponseEntity<ManagerResponse> removeManager(@PathVariable Long managerId) {
         User currentUser = authService.getCurrentUser();
-        log.debug("Admin {} removing manager {}", currentUser.getEmail(), request.getManager_id());
+        log.debug("Admin {} removing manager {}", currentUser.getEmail(), managerId);
         
-        // In a real implementation, this would update the database
-        // For now, we'll just create a dummy response
+        adminService.removeManager(managerId);
         
         return ResponseEntity.ok(ManagerResponse.builder()
-                .status("Manager removed successfully")
+                .status("Manager and associated agents removed successfully")
                 .build());
     }
     

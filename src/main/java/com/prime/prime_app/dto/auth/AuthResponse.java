@@ -4,36 +4,46 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.Set;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class AuthResponse {
-    private String accessToken;
+    private String token;
     private String refreshToken;
-    private String tokenType;
     private Long expiresIn;
+    private String workId;
     private String email;
     private String firstName;
     private String lastName;
-    private String role;
+    private Set<String> roles;
     private String message;
-
+    
     @Builder.Default
     private String type = "Bearer";
 
-    public static AuthResponse of(String accessToken, String refreshToken, Long expiresIn, 
-                                String email, String firstName, String lastName, 
-                                String role, String message) {
+    public static AuthResponse of(
+            String token,
+            String refreshToken,
+            Long expiresIn,
+            String workId,
+            String email,
+            String firstName,
+            String lastName,
+            Set<String> roles,
+            String message
+    ) {
         return AuthResponse.builder()
-                .accessToken(accessToken)
+                .token(token)
                 .refreshToken(refreshToken)
                 .expiresIn(expiresIn)
+                .workId(workId)
                 .email(email)
                 .firstName(firstName)
                 .lastName(lastName)
-                .role(role)
+                .roles(roles)
                 .message(message)
                 .build();
     }

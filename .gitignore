@@ -18,6 +18,10 @@ target/
 *.iws
 *.iml
 *.ipr
+.idea/
+.idea_modules/
+out/
+.run/
 
 ### NetBeans ###
 /nbproject/private/
@@ -31,6 +35,18 @@ build/
 
 ### VS Code ###
 .vscode/
+.code-workspace
+.history/
+
+### Eclipse ###
+.metadata
+bin/
+tmp/
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
 
 ### Java ###
 # Compiled class files
@@ -40,6 +56,8 @@ build/
 *.log
 logs/
 log/
+/log
+/logs
 
 # BlueJ files
 *.ctxt
@@ -71,6 +89,7 @@ buildNumber.properties
 .mvn/timing.properties
 # https://github.com/takari/maven-wrapper#usage-without-binary-jar
 .mvn/wrapper/maven-wrapper.jar
+!.mvn/wrapper/maven-wrapper.properties
 
 ### Spring Boot ###
 *#
@@ -99,12 +118,15 @@ secrets.yml
 *.db
 *.sqlite
 *.db-journal
+*.accdb
+*.mdb
 
 ### Redis ###
 *.rdb
 *.aof
 appendonly.aof
 dump.rdb
+nodes.conf
 
 ### Node (for frontend integration) ###
 node_modules/
@@ -112,7 +134,14 @@ npm-debug.log
 yarn-debug.log
 yarn-error.log
 package-lock.json
+yarn.lock
 .pnpm-debug.log
+/.pnp
+.pnp.js
+/coverage
+/build
+.eslintcache
+.parcel-cache/
 
 ### OS generated files ###
 .DS_Store
@@ -123,13 +152,14 @@ package-lock.json
 ehthumbs.db
 Thumbs.db
 desktop.ini
+.directory
 
 ### Application Properties with sensitive data ###
-src/main/resources/application-local.properties
-src/main/resources/application-dev.properties
-src/main/resources/application-prod.properties
+/src/main/resources/application-local.properties
+/src/main/resources/application-dev.properties
+/src/main/resources/application-prod.properties
 # Keep the main application.properties
-!src/main/resources/application.properties
+!/src/main/resources/application.properties
 
 ### Environment variables ###
 .env
@@ -137,17 +167,56 @@ src/main/resources/application-prod.properties
 .env.development.local
 .env.test.local
 .env.production.local
+*.env
 
 ### Docker ###
 Dockerfile.local
 docker-compose.override.yml
+.dockerignore
 
 ### Test Coverage ###
 coverage/
 .coverage
 *.lcov
 .nyc_output
+htmlcov/
+.tox/
+.nox/
+junit-*.properties
+.hypothesis/
+.pytest_cache/
+
+### CI/CD ###
+.github/.DS_Store
+.circleci/
+cloudbuild.yaml
+
+### Misc ###
+backup/
+temp/
+tmp/
+*.bak
+*.swp
+*~
+.temp
+.tmp
+.vscode/launch.json
+.vscode/tasks.json
+settings.json
+.direnv/
+*.orig
+*.rej
+*.pid
+*.seed
+*.pid.lock
 
 ### Application specific ###
 data/
-# Add project specific patterns here
+dev-config/
+
+# Compiled frontend assets
+/src/main/resources/static/
+/src/main/resources/public/
+
+# Generated API models
+/src/main/resources/schema/

@@ -18,6 +18,12 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     @Query("SELECT a FROM Attendance a WHERE a.agent = ?1 AND DATE(a.checkInTime) = CURRENT_DATE")
     Optional<Attendance> findTodayAttendanceByAgent(User agent);
     
+    @Query("SELECT a FROM Attendance a WHERE a.agent.id = ?1 ORDER BY a.checkInTime DESC LIMIT 1")
+    Optional<Attendance> findLatestByAgent(Long agentId);
+    
+    @Query("SELECT COUNT(DISTINCT FUNCTION('DATE', a.checkInTime)) FROM Attendance a WHERE a.agent.id = ?1 AND a.checkInTime BETWEEN ?2 AND ?3")
+    int countWorkingDaysByAgent(Long agentId, LocalDateTime startDate, LocalDateTime endDate);
+    
     Page<Attendance> findByAgent(User agent, Pageable pageable);
     
     Page<Attendance> findByManager(User manager, Pageable pageable);
@@ -45,4 +51,13 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     
     @Query("SELECT COUNT(DISTINCT a.agent) FROM Attendance a WHERE a.manager = ?1 AND DATE(a.checkInTime) = CURRENT_DATE AND a.status = 'PRESENT'")
     Long countPresentAgentsToday(User manager);
+    
+    boolean existsByAgentAndCheckInTimeBetween(User agent, LocalDateTime start, LocalDateTime end);
+    
+    @Query("SELECT a FROM Attendance a WHERE a.agent.id = ?1 AND a.checkInTime BETWEEN ?2 AND ?3")
+    Optional<Attendance> findByAgentIdAndCheckInTimeBetween(Long agentId, LocalDateTime start, LocalDateTime end);
+    
+    List<Attendance> findByAgentAndCheckInTimeBetweenOrderByCheckInTimeDesc(User agent, LocalDateTime start, LocalDateTime end);
+    
+    List<Attendance> findByManagerAndCheckInTimeBetween(User manager, LocalDateTime start, LocalDateTime end);
 }

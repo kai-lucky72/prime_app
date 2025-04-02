@@ -15,6 +15,17 @@ import java.util.Optional;
 
 @Repository
 public interface ClientRepository extends JpaRepository<Client, Long> {
+    @Query("SELECT COUNT(c) FROM Client c WHERE c.agent.id = :agentId AND DATE(c.timeOfInteraction) = CURRENT_DATE")
+    int countTodaysClientsByAgent(Long agentId);
+
+    @Query("SELECT COUNT(c) FROM Client c WHERE c.agent.id = :agentId AND c.timeOfInteraction BETWEEN :startDate AND :endDate")
+    int countByAgentAndDateBetween(Long agentId, LocalDateTime startDate, LocalDateTime endDate);
+
+    @Query("SELECT DISTINCT c.sector FROM Client c WHERE c.agent.id = :agentId AND c.timeOfInteraction BETWEEN :startDate AND :endDate")
+    List<String> findDistinctSectorsByAgent(Long agentId, LocalDateTime startDate, LocalDateTime endDate);
+
+    @Query("SELECT c FROM Client c WHERE c.agent.manager = :manager AND c.timeOfInteraction BETWEEN :startDate AND :endDate")
+    List<Client> findByManagerAndDateBetween(User manager, LocalDateTime startDate, LocalDateTime endDate);
     Optional<Client> findByEmail(String email);
     Optional<Client> findByPolicyNumber(String policyNumber);
     Page<Client> findByAgent(User agent, Pageable pageable);

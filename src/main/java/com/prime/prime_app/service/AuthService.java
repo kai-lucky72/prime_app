@@ -3,7 +3,9 @@ package com.prime.prime_app.service;
 import com.prime.prime_app.dto.auth.AuthRequest;
 import com.prime.prime_app.dto.auth.AuthResponse;
 import com.prime.prime_app.dto.auth.RegisterRequest;
+import com.prime.prime_app.entities.Role;
 import com.prime.prime_app.entities.User;
+import com.prime.prime_app.repository.RoleRepository;
 import com.prime.prime_app.repository.UserRepository;
 import com.prime.prime_app.security.JwtUtils;
 import jakarta.persistence.EntityNotFoundException;
@@ -15,77 +17,82 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
     private final AuthenticationManager authenticationManager;
 
-    @Transactional
-    public AuthResponse register(RegisterRequest request) {
-        // Check if user already exists
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("Email is already registered");
-        }
-
-        // Create new user
-        User user = User.builder()
-                .firstName(request.getFirstName())
-                .lastName(request.getLastName())
-                .name(request.getFirstName() + " " + request.getLastName())
-                .email(request.getEmail())
-                .username(request.getEmail()) // Default to using email as username
-                .password(passwordEncoder.encode(request.getPassword()))
-                .phoneNumber(request.getPhoneNumber())
-                .role(User.UserRole.AGENT) // Default role is AGENT
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
-
-        User savedUser = userRepository.save(user);
-
-        // Generate tokens
-        String accessToken = jwtUtils.generateToken(savedUser);
-        String refreshToken = jwtUtils.generateRefreshToken(savedUser);
-
-        return AuthResponse.of(
-                accessToken,
-                refreshToken,
-                (long) jwtUtils.getJwtExpirationMs(),
-                savedUser.getEmail(),
-                savedUser.getFirstName(),
-                savedUser.getLastName(),
-                savedUser.getRole().name(),
-                "User registered successfully"
-        );
-    }
-
     public AuthResponse authenticate(AuthRequest request) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
-        );
+        // Find user by workId first - primary identifier
+        User user = userRepository.findByWorkId(request.getWorkId())
+                .orElseThrow(() -> new EntityNotFoundException("Invalid credentials: Work ID not found"));
 
+        // Verify email matches
+        if (!user.getEmail().equals(request.getEmail())) {
+            throw new EntityNotFoundException("Invalid credentials: Email does not match Work ID");
+        }
+        
+        // Only verify password if provided (optional authentication step)
+        if (StringUtils.hasText(request.getPassword())) {
+            if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+                throw new EntityNotFoundException("Invalid credentials: Password incorrect");
+            }
+        }
+        
+        // Create authentication token with authorities based on user role
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                user,
+                null,
+                user.getAuthorities()
+        );
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        User user = (User) authentication.getPrincipal();
+
+        // Update last login time
+        user.setLastLogin(LocalDateTime.now());
+        userRepository.save(user);
 
         String accessToken = jwtUtils.generateToken(user);
         String refreshToken = jwtUtils.generateRefreshToken(user);
 
+        // Determine user role for proper redirection
+        String userRole = determineUserRole(user);
+
         return AuthResponse.of(
                 accessToken,
                 refreshToken,
                 (long) jwtUtils.getJwtExpirationMs(),
+                user.getWorkId(),
                 user.getEmail(),
                 user.getFirstName(),
                 user.getLastName(),
-                user.getRole().name(),
-                "Authentication successful"
+                user.getRoles().stream()
+                        .map(role -> role.getName().name())
+                        .collect(Collectors.toSet()),
+                "Authentication successful as " + userRole
         );
+    }
+    
+    private String determineUserRole(User user) {
+        if (isAdmin(user)) {
+            return "ADMIN";
+        } else if (isManager(user)) {
+            return "MANAGER";
+        } else if (isAgent(user)) {
+            return "AGENT";
+        } else {
+            return "USER";
+        }
     }
 
     @Transactional
@@ -105,10 +112,13 @@ public class AuthService {
                 newAccessToken,
                 newRefreshToken,
                 (long) jwtUtils.getJwtExpirationMs(),
+                user.getWorkId(),
                 user.getEmail(),
                 user.getFirstName(),
                 user.getLastName(),
-                user.getRole().name(),
+                user.getRoles().stream()
+                        .map(role -> role.getName().name())
+                        .collect(Collectors.toSet()),
                 "Token refreshed successfully"
         );
     }
@@ -126,15 +136,28 @@ public class AuthService {
         return (User) authentication.getPrincipal();
     }
     
-    public boolean isUserAdmin(User user) {
-        return user.getRole() == User.UserRole.ADMIN;
+    public boolean isAdmin(User user) {
+        return user.getRoles().stream()
+                .anyMatch(role -> role.getName() == Role.RoleType.ROLE_ADMIN);
     }
     
-    public boolean isUserManager(User user) {
-        return user.getRole() == User.UserRole.MANAGER;
+    public boolean isManager(User user) {
+        return user.getRoles().stream()
+                .anyMatch(role -> role.getName() == Role.RoleType.ROLE_MANAGER);
     }
     
-    public boolean isUserAgent(User user) {
-        return user.getRole() == User.UserRole.AGENT;
+    public boolean isAgent(User user) {
+        return user.getRoles().stream()
+                .anyMatch(role -> role.getName() == Role.RoleType.ROLE_AGENT);
+    }
+
+    @Transactional
+    public void logout(User user) {
+        // Clear security context
+        SecurityContextHolder.clearContext();
+        
+        // Update user's last login time
+        user.setLastLogin(LocalDateTime.now());
+        userRepository.save(user);
     }
 }

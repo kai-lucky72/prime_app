@@ -1,7 +1,7 @@
 package com.prime.prime_app.dto.client;
 
 import com.prime.prime_app.entities.Client.InsuranceType;
-import com.prime.prime_app.entities.Client.PolicyStatus;
+import com.prime.prime_app.entities.PolicyStatus;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -34,6 +34,11 @@ public class ClientRequest {
     
     @NotBlank(message = "Address is required")
     private String address;
+    
+    @NotBlank(message = "Location is required")
+    private String location;
+    
+    private String sector;
     
     @NotNull(message = "Date of birth is required")
     @Past(message = "Date of birth must be in the past")

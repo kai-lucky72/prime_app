@@ -5,65 +5,111 @@ import com.prime.prime_app.entities.User;
 import com.prime.prime_app.repository.RoleRepository;
 import com.prime.prime_app.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
-import java.util.Arrays;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
-@Slf4j
 @Component
 @RequiredArgsConstructor
 public class DataSeeder implements CommandLineRunner {
 
-    private final RoleRepository roleRepository;
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
     public void run(String... args) {
-        if (roleRepository.count() == 0) {
-            seedRoles();
-        }
-        if (userRepository.count() == 0) {
-            seedAdminUser();
-        }
-    }
-
-    private void seedRoles() {
-        log.info("Seeding roles...");
-        Arrays.stream(Role.RoleType.values()).forEach(roleType -> {
-            if (!roleRepository.existsByName(roleType)) {
-                Role role = Role.builder()
-                        .name(roleType)
-                        .build();
-                roleRepository.save(role);
-                log.info("Created role: {}", roleType);
-            }
-        });
-    }
-
-    private void seedAdminUser() {
-        log.info("Seeding admin user...");
+        // Create roles if they don't exist
         Role adminRole = roleRepository.findByName(Role.RoleType.ROLE_ADMIN)
-                .orElseThrow(() -> new RuntimeException("Admin role not found"));
+                .orElseGet(() -> roleRepository.save(Role.builder().name(Role.RoleType.ROLE_ADMIN).build()));
+        Role managerRole = roleRepository.findByName(Role.RoleType.ROLE_MANAGER)
+                .orElseGet(() -> roleRepository.save(Role.builder().name(Role.RoleType.ROLE_MANAGER).build()));
+        Role agentRole = roleRepository.findByName(Role.RoleType.ROLE_AGENT)
+                .orElseGet(() -> roleRepository.save(Role.builder().name(Role.RoleType.ROLE_AGENT).build()));
 
-        Set<Role> adminRoles = new HashSet<>();
-        adminRoles.add(adminRole);
+        // Create admin user if it doesn't exist
+        if (!userRepository.findByEmail("admin@prime.com").isPresent()) {
+            Set<Role> adminRoles = new HashSet<>();
+            adminRoles.add(adminRole);
 
-        User adminUser = User.builder()
-                .firstName("Admin")
-                .lastName("User")
-                .email("admin@primeapp.com")
-                .password(passwordEncoder.encode("Admin@123"))
-                .phoneNumber("+250700000000")
-                .roles(adminRoles)
-                .build();
+            User admin = User.builder()
+                    .firstName("Lcuky")
+                    .lastName("Kagabo")
+                    .name("Admin User")
+                    .email("admin@prime.com")
+                    .username("admin@prime.com")
+                    .workId("admin")
+                    .nationalId("ADMIN1234")
+                    .password(passwordEncoder.encode("admin123"))
+                    .phoneNumber("+250723374650")
+                    .roles(adminRoles)
+                    .enabled(true)
+                    .accountNonExpired(true)
+                    .accountNonLocked(true)
+                    .credentialsNonExpired(true)
+                    .createdAt(LocalDateTime.now())
+                    .updatedAt(LocalDateTime.now())
+                    .build();
 
-        userRepository.save(adminUser);
-        log.info("Created admin user with email: {}", adminUser.getEmail());
+            userRepository.save(admin);
+        }
+
+        // Create manager user if it doesn't exist
+        if (!userRepository.findByEmail("manager@prime.com").isPresent()) {
+            Set<Role> managerRoles = new HashSet<>();
+            managerRoles.add(managerRole);
+
+            User manager = User.builder()
+                    .firstName("Manager")
+                    .lastName("User")
+                    .name("Manager User")
+                    .email("manager@prime.com")
+                    .username("manager@prime.com")
+                    .workId("manager")
+                    .nationalId("MANAGER1234")
+                    .password(passwordEncoder.encode("manager123"))
+                    .phoneNumber("1234567891")
+                    .roles(managerRoles)
+                    .enabled(true)
+                    .accountNonExpired(true)
+                    .accountNonLocked(true)
+                    .credentialsNonExpired(true)
+                    .createdAt(LocalDateTime.now())
+                    .updatedAt(LocalDateTime.now())
+                    .build();
+
+            userRepository.save(manager);
+        }
+
+        // Create agent user if it doesn't exist
+        if (!userRepository.findByEmail("agent@prime.com").isPresent()) {
+            Set<Role> agentRoles = new HashSet<>();
+            agentRoles.add(agentRole);
+
+            User agent = User.builder()
+                    .firstName("Agent")
+                    .lastName("User")
+                    .name("Agent User")
+                    .email("agent@prime.com")
+                    .username("agent@prime.com")
+                    .workId("agent")
+                    .nationalId("AGENT1234")
+                    .password(passwordEncoder.encode("agent123"))
+                    .phoneNumber("1234567892")
+                    .roles(agentRoles)
+                    .enabled(true)
+                    .accountNonExpired(true)
+                    .accountNonLocked(true)
+                    .credentialsNonExpired(true)
+                    .createdAt(LocalDateTime.now())
+                    .updatedAt(LocalDateTime.now())
+                    .build();
+
+            userRepository.save(agent);
+        }
     }
 }

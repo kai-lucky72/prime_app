@@ -16,8 +16,12 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     @Transactional(readOnly = true)
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+    public UserDetails loadUserByUsername(String usernameOrEmail) throws UsernameNotFoundException {
+        // First try to find by workId which is the primary identifier
+        return userRepository.findByWorkId(usernameOrEmail)
+                .orElseGet(() -> userRepository.findByEmail(usernameOrEmail)
+                        .orElseGet(() -> userRepository.findByUsername(usernameOrEmail)
+                                .orElseThrow(() -> new UsernameNotFoundException(
+                                        "User not found with workId/email/username: " + usernameOrEmail))));
     }
 }

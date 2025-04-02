@@ -89,7 +89,7 @@ public class Attendance {
 
     @PostLoad
     @PostUpdate
-    protected void calculateTotalHours() {
+    public void calculateTotalHours() {
         if (checkInTime != null && checkOutTime != null) {
             totalHoursWorked = java.time.Duration.between(checkInTime, checkOutTime).toHours();
         }

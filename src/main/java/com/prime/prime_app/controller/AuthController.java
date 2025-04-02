@@ -2,12 +2,11 @@ package com.prime.prime_app.controller;
 
 import com.prime.prime_app.dto.auth.AuthRequest;
 import com.prime.prime_app.dto.auth.AuthResponse;
-import com.prime.prime_app.dto.auth.LoginRequest;
-import com.prime.prime_app.dto.auth.LoginResponse;
-import com.prime.prime_app.dto.auth.RegisterRequest;
+import com.prime.prime_app.dto.auth.LoginHelpRequest;
 import com.prime.prime_app.dto.common.MessageResponse;
-import com.prime.prime_app.entities.Role;
+import com.prime.prime_app.entities.User;
 import com.prime.prime_app.service.AuthService;
+import com.prime.prime_app.service.EmailService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -17,6 +16,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.stream.Collectors;
+
 @Slf4j
 @RestController
 @RequestMapping("/api/auth")
@@ -25,46 +26,33 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
-
-    @Operation(
-        summary = "Register a new user",
-        description = "Register a new user with the provided details. By default, users are registered with ROLE_AGENT."
-    )
-    @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
-        log.debug("Register request received for email: {}", request.getEmail());
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(authService.register(request));
-    }
+    private final EmailService emailService;
 
     @Operation(
         summary = "Authenticate user",
-        description = "Authenticate a user with username and password, returns JWT token upon successful authentication."
+        description = "Authenticate a user with workId and email, returns JWT token upon successful authentication."
     )
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-        log.debug("Login request received for username: {}", request.getUsername());
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody AuthRequest request) {
+        return ResponseEntity.ok(authService.authenticate(request));
+    }
+
+    @Operation(
+        summary = "Request login help",
+        description = "Send a login help request to the admin when unable to login"
+    )
+    @PostMapping("/login-help")
+    public ResponseEntity<MessageResponse> requestLoginHelp(@Valid @RequestBody LoginHelpRequest request) {
+        log.info("Login help request received for workId: {}", request.getWorkId());
+        emailService.sendLoginHelpRequest(
+            request.getWorkId(),
+            request.getEmail(),
+            request.getMessage()
+        );
         
-        // Convert username to email for the existing authentication system
-        AuthRequest authRequest = new AuthRequest();
-        authRequest.setEmail(request.getUsername());
-        authRequest.setPassword(request.getPassword());
-        
-        AuthResponse authResponse = authService.authenticate(authRequest);
-        
-        // Convert to the new response format
-        Role primaryRole = authResponse.getRoles().iterator().next();
-        
-        LoginResponse response = LoginResponse.builder()
-                .token(authResponse.getAccessToken())
-                .user(LoginResponse.UserDto.builder()
-                      .id(authService.getCurrentUser().getId().toString())
-                      .name(authResponse.getFirstName() + " " + authResponse.getLastName())
-                      .role(primaryRole.getName().toString().replace("ROLE_", ""))
-                      .build())
-                .build();
-                
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(MessageResponse.builder()
+                .message("Your login help request has been sent to the administrator")
+                .build());
     }
 
     @Operation(
@@ -73,11 +61,8 @@ public class AuthController {
     )
     @PostMapping("/logout")
     public ResponseEntity<MessageResponse> logout() {
-        // In a stateless JWT-based authentication system, the server doesn't need to do
-        // anything for logout as tokens are validated on each request
-        // The client should discard the token
-        
-        // In a production system, we would implement token blacklisting or revocation
+        User currentUser = authService.getCurrentUser();
+        authService.logout(currentUser);
         
         return ResponseEntity.ok(MessageResponse.builder()
                 .message("Successfully logged out")
@@ -110,5 +95,23 @@ public class AuthController {
             ).build();
         }
         return ResponseEntity.badRequest().build();
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<AuthResponse> getCurrentUser() {
+        User user = authService.getCurrentUser();
+        return ResponseEntity.ok(AuthResponse.of(
+                null, // No new token needed
+                null, // No refresh token needed
+                0L,  // No expiration needed
+                user.getWorkId(),
+                user.getEmail(),
+                user.getFirstName(),
+                user.getLastName(),
+                user.getRoles().stream()
+                        .map(role -> role.getName().name())
+                        .collect(Collectors.toSet()),
+                "Current user details"
+        ));
     }
 }

@@ -1,5 +1,8 @@
 package com.prime.prime_app.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.prime.prime_app.entities.Attendance;
+import com.prime.prime_app.entities.Performance;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import lombok.AllArgsConstructor;
@@ -11,6 +14,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -23,6 +27,55 @@ import java.util.stream.Collectors;
 @Entity
 @Table(name = "users")
 public class User implements UserDetails {
+    @Override
+    public String getPassword() {
+        return password;
+    }
+
+    public String getWorkId() {
+        return workId;
+    }
+
+    public void setWorkId(String workId) {
+        this.workId = workId;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
+
+    public Set<Role> getRoles() {
+        return roles;
+    }
+
+    public void setRoles(Set<Role> roles) {
+        this.roles = roles;
+    }
+
+    public void setLastLogin(LocalDateTime lastLogin) {
+        this.lastLogin = lastLogin;
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -40,18 +93,43 @@ public class User implements UserDetails {
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(nullable = false, unique = true)
+    @Column(name = "work_id", nullable = false, unique = true)
+    private String workId;
+
+    @Column(nullable = false)
     private String username;
 
     @Column(nullable = false)
+    @JsonIgnore
     private String password;
 
-    @Column(unique = true)
+    @Column(name = "national_id", nullable = false, unique = true)
+    private String nationalId;
+
+    @Column(nullable = false, unique = true)
     private String phoneNumber;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "role", nullable = false)
-    private UserRole role;
+    @Column(name = "fcm_token")
+    private String fcmToken;
+
+    @Column(name = "last_login")
+    private LocalDateTime lastLogin;
+
+    @Column(name = "login_attempts")
+    @Builder.Default
+    private Integer loginAttempts = 0;
+
+    @Column(name = "login_locked_until")
+    private LocalDateTime loginLockedUntil;
+
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+        name = "user_roles",
+        joinColumns = @JoinColumn(name = "user_id"),
+        inverseJoinColumns = @JoinColumn(name = "role_id")
+    )
+    @Builder.Default
+    private Set<Role> roles = new HashSet<>();
 
     @Column(nullable = false)
     @Builder.Default
@@ -69,10 +147,10 @@ public class User implements UserDetails {
     @Builder.Default
     private boolean credentialsNonExpired = true;
 
-    @Column(nullable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(nullable = false)
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
     @Column
@@ -82,9 +160,13 @@ public class User implements UserDetails {
     @JoinColumn(name = "manager_id")
     private User manager;
 
-    @OneToMany(mappedBy = "manager")
+    @OneToMany(mappedBy = "manager", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private Set<User> managedAgents = new HashSet<>();
+
+    @OneToMany(mappedBy = "manager", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private Set<ManagerAssignedAgent> managerAssignments = new HashSet<>();
 
     @OneToMany(mappedBy = "agent", cascade = CascadeType.ALL)
     @Builder.Default
@@ -119,12 +201,22 @@ public class User implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Set.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
+        if (roles == null) {
+            return new ArrayList<>();
+        }
+        return roles.stream()
+                .filter(role -> role != null && role.getName() != null)
+                .map(role -> new SimpleGrantedAuthority(role.getName().name()))
+                .collect(Collectors.toList());
     }
+
+    @Column(name = "is_agent_leader")
+    @Builder.Default
+    private boolean isAgentLeader = false;
 
     @Override
     public String getUsername() {
-        return username;
+        return username;  // Use the username field for UserDetails
     }
 
     @Override
@@ -146,8 +238,15 @@ public class User implements UserDetails {
     public boolean isEnabled() {
         return enabled;
     }
-    
-    public enum UserRole {
-        ADMIN, MANAGER, AGENT
+
+    public Role.RoleType getPrimaryRole() {
+        if (roles == null || roles.isEmpty()) {
+            return null;
+        }
+        return roles.stream()
+                .filter(role -> role != null)
+                .findFirst()
+                .map(Role::getName)
+                .orElse(null);
     }
 }

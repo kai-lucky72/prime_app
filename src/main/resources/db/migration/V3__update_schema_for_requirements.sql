@@ -11,7 +11,8 @@ ALTER TABLE users ADD CONSTRAINT UK_users_username UNIQUE (username);
 UPDATE users SET username = email WHERE username IS NULL;
 
 -- Make username not nullable after setting initial values
-ALTER TABLE users ALTER COLUMN username VARCHAR(50) NOT NULL;
+-- ALTER TABLE users ALTER COLUMN username VARCHAR(50) NOT NULL;
+-- The line above has incorrect syntax for MySQL, will be fixed in V10
 
 -- Create new clients table as per requirements
 CREATE TABLE clients (
