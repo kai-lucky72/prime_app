@@ -231,4 +231,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
-© 2023 Prime Management App. All rights reserved.
+© 2025 Prime Management App. All rights reserved.
