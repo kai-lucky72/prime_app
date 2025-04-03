@@ -99,7 +99,7 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private String username;
 
-    @Column(nullable = false)
+    @Column
     @JsonIgnore
     private String password;
 

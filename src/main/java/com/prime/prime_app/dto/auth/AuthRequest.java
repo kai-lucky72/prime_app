@@ -1,5 +1,6 @@
 package com.prime.prime_app.dto.auth;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
@@ -19,6 +20,6 @@ public class AuthRequest {
     @Email(message = "Invalid email format")
     private String email;
 
-    // Password is now optional
+    @Schema(description = "Optional password - only required for subsequent logins if the user has set a password", required = false)
     private String password;
 }

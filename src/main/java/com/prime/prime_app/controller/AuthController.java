@@ -6,7 +6,7 @@ import com.prime.prime_app.dto.auth.LoginHelpRequest;
 import com.prime.prime_app.dto.common.MessageResponse;
 import com.prime.prime_app.entities.User;
 import com.prime.prime_app.service.AuthService;
-import com.prime.prime_app.service.EmailService;
+import com.prime.prime_app.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -26,11 +26,12 @@ import java.util.stream.Collectors;
 public class AuthController {
 
     private final AuthService authService;
-    private final EmailService emailService;
+    private final NotificationService notificationService;
 
     @Operation(
         summary = "Authenticate user",
-        description = "Authenticate a user with workId and email, returns JWT token upon successful authentication."
+        description = "Authenticate a user with workId and email. Password is optional for first-time logins. " +
+                "Returns JWT token upon successful authentication."
     )
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody AuthRequest request) {
@@ -39,12 +40,14 @@ public class AuthController {
 
     @Operation(
         summary = "Request login help",
-        description = "Send a login help request to the admin when unable to login"
+        description = "Send a login help request to the admin as an in-app notification"
     )
     @PostMapping("/login-help")
     public ResponseEntity<MessageResponse> requestLoginHelp(@Valid @RequestBody LoginHelpRequest request) {
         log.info("Login help request received for workId: {}", request.getWorkId());
-        emailService.sendLoginHelpRequest(
+        
+        // Create notifications for all admin users instead of sending an email
+        notificationService.createLoginHelpNotification(
             request.getWorkId(),
             request.getEmail(),
             request.getMessage()

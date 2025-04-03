@@ -5,9 +5,14 @@ import com.prime.prime_app.dto.admin.AgentListResponse;
 import com.prime.prime_app.dto.admin.DeleteManagerRequest;
 import com.prime.prime_app.dto.admin.ManagerListResponse;
 import com.prime.prime_app.dto.admin.ManagerResponse;
+import com.prime.prime_app.dto.common.MessageResponse;
+import com.prime.prime_app.dto.notification.NotificationDto;
+import com.prime.prime_app.dto.notification.NotificationListResponse;
+import com.prime.prime_app.entities.Notification;
 import com.prime.prime_app.entities.User;
 import com.prime.prime_app.service.AdminService;
 import com.prime.prime_app.service.AuthService;
+import com.prime.prime_app.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -19,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
@@ -29,6 +35,7 @@ public class AdminController {
 
     private final AuthService authService;
     private final AdminService adminService;
+    private final NotificationService notificationService;
     
     @Operation(
         summary = "Get managers",
@@ -106,6 +113,46 @@ public class AdminController {
         
         return ResponseEntity.ok(AgentListResponse.builder()
                 .agents(agents)
+                .build());
+    }
+    
+    @Operation(
+        summary = "Get notifications",
+        description = "Get all notifications for the admin, including login help requests"
+    )
+    @GetMapping("/notifications")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    public ResponseEntity<NotificationListResponse> getNotifications() {
+        User currentUser = authService.getCurrentUser();
+        log.debug("Admin {} requesting notifications", currentUser.getEmail());
+        
+        List<Notification> notifications = notificationService.getNotificationsForUser(currentUser);
+        Long unreadCount = notificationService.countUnreadNotifications(currentUser);
+        
+        List<NotificationDto> notificationDtos = notifications.stream()
+                .map(NotificationDto::fromEntity)
+                .collect(Collectors.toList());
+        
+        return ResponseEntity.ok(NotificationListResponse.builder()
+                .notifications(notificationDtos)
+                .unreadCount(unreadCount.intValue())
+                .build());
+    }
+    
+    @Operation(
+        summary = "Mark notification as read",
+        description = "Mark a specific notification as read"
+    )
+    @PostMapping("/notifications/{notificationId}/read")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    public ResponseEntity<MessageResponse> markNotificationAsRead(@PathVariable Long notificationId) {
+        User currentUser = authService.getCurrentUser();
+        log.debug("Admin {} marking notification {} as read", currentUser.getEmail(), notificationId);
+        
+        notificationService.markNotificationAsRead(notificationId, currentUser);
+        
+        return ResponseEntity.ok(MessageResponse.builder()
+                .message("Notification marked as read")
                 .build());
     }
 } 
