@@ -77,13 +77,12 @@ public class AdminService {
                 .orElseThrow(() -> new EntityNotFoundException("Manager role not found"));
 
         // Create new user with manager role
-        User.UserBuilder userBuilder = User.builder()
+        User manager = User.builder()
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
                 .name(request.getFirstName() + " " + request.getLastName())
                 .email(request.getEmail())
                 .workId(request.getWorkId())
-                .username(request.getEmail()) // Set username as email
                 .nationalId(request.getNationalId())
                 .phoneNumber(request.getPhoneNumber())
                 .roles(new HashSet<>(List.of(managerRole)))
@@ -92,14 +91,9 @@ public class AdminService {
                 .enabled(true)
                 .accountNonExpired(true)
                 .accountNonLocked(true)
-                .credentialsNonExpired(true);
+                .credentialsNonExpired(true)
+                .build();
         
-        // Only set password if provided
-        if (request.getPassword() != null && !request.getPassword().isEmpty()) {
-            userBuilder.password(passwordEncoder.encode(request.getPassword()));
-        }
-        
-        User manager = userBuilder.build();
         userRepository.save(manager);
         
         return ManagerResponse.builder()

@@ -6,7 +6,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import io.swagger.v3.oas.annotations.media.Schema;
 
 @Data
 @Builder
@@ -31,7 +30,4 @@ public class AddManagerRequest {
 
     @NotBlank(message = "Work ID is required")
     private String workId;
-    
-    @Schema(description = "Optional password - only needed if user wants to set it during account creation", required = false)
-    private String password;
 } 
