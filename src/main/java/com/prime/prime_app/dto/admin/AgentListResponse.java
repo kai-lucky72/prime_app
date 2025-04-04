@@ -20,6 +20,9 @@ public class AgentListResponse {
     public static class AgentDto {
         private String id;
         private String name;
+        private String email;
+        private String workId;
         private String manager_id;
+        private String manager_name;
     }
 } 

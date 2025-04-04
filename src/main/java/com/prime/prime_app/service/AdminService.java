@@ -83,8 +83,10 @@ public class AdminService {
                 .name(request.getFirstName() + " " + request.getLastName())
                 .email(request.getEmail())
                 .workId(request.getWorkId())
+                .username(request.getWorkId())
                 .nationalId(request.getNationalId())
                 .phoneNumber(request.getPhoneNumber())
+                .password("") // Set empty password to satisfy database constraint
                 .roles(new HashSet<>(List.of(managerRole)))
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
@@ -137,6 +139,7 @@ public class AdminService {
      */
     @Transactional(readOnly = true)
     public AgentListResponse getAllAgents() {
+        // Find all users with ROLE_AGENT
         List<User> agents = userRepository.findAll().stream()
                 .filter(user -> user.getPrimaryRole() == Role.RoleType.ROLE_AGENT)
                 .collect(Collectors.toList());
@@ -146,17 +149,26 @@ public class AdminService {
         for (User agent : agents) {
             // Find manager for this agent
             String managerId = null;
+            String managerName = null;
+            
+            // Get manager through the ManagerAssignedAgent table
             List<ManagerAssignedAgent> assignments = managerAssignedAgentRepository.findByAgent(agent);
             
             if (!assignments.isEmpty()) {
-                managerId = assignments.get(0).getManager().getId().toString();
+                User manager = assignments.get(0).getManager();
+                managerId = manager.getId().toString();
+                managerName = manager.getName();
+                
+                // Only add agents that have a manager assigned
+                agentDtos.add(AgentListResponse.AgentDto.builder()
+                        .id(agent.getId().toString())
+                        .name(agent.getName())
+                        .email(agent.getEmail())
+                        .workId(agent.getWorkId())
+                        .manager_id(managerId)
+                        .manager_name(managerName)
+                        .build());
             }
-            
-            agentDtos.add(AgentListResponse.AgentDto.builder()
-                    .id(agent.getId().toString())
-                    .name(agent.getName())
-                    .manager_id(managerId)
-                    .build());
         }
         
         return AgentListResponse.builder()

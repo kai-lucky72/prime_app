@@ -60,6 +60,10 @@ public class SecurityConfig {
                 .requestMatchers("/actuator/**").hasRole("ADMIN")
                 // Protected endpoints
                 .requestMatchers("/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/v1/api/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/v1/api/admin/agents").hasRole("ADMIN")
+                .requestMatchers("/api/v1/api/admin/agents/**").hasRole("ADMIN")
                 .requestMatchers("/manager/**").hasAnyRole("ADMIN", "MANAGER")
                 .requestMatchers("/agent/**").hasAnyRole("ADMIN", "MANAGER", "AGENT")
                 .anyRequest().authenticated()

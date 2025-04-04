@@ -29,7 +29,8 @@ import java.util.stream.Collectors;
 public class User implements UserDetails {
     @Override
     public String getPassword() {
-        return password;
+        // Return an empty string for null passwords to avoid NullPointerException in Spring Security
+        return password == null ? "" : password;
     }
 
     public String getWorkId() {
@@ -99,7 +100,7 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private String username;
 
-    @Column(nullable = false)
+    @Column
     @JsonIgnore
     private String password;
 
