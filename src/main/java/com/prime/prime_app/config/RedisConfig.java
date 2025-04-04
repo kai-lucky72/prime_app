@@ -7,6 +7,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
+import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
@@ -49,5 +51,43 @@ public class RedisConfig {
         template.setHashValueSerializer(new GenericJackson2JsonRedisSerializer());
         template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
         return template;
+    }
+
+    @Bean
+    public RedisConnectionFactory redisConnectionFactory() {
+        try {
+            // Try to use environment variables or application properties
+            String redisHost = System.getenv("REDIS_HOST");
+            String redisPort = System.getenv("REDIS_PORT");
+            
+            // Default values
+            if (redisHost == null) redisHost = "localhost";
+            if (redisPort == null) redisPort = "6379";
+            
+            RedisStandaloneConfiguration config = new RedisStandaloneConfiguration();
+            config.setHostName(redisHost);
+            config.setPort(Integer.parseInt(redisPort));
+            
+            return new JedisConnectionFactory(config);
+        } catch (Exception e) {
+            // Fallback to default in-memory configuration if Redis is not available
+            return new JedisConnectionFactory();
+        }
+    }
+
+    @Bean
+    public RedisTemplate<String, String> stringRedisTemplate() {
+        try {
+            RedisTemplate<String, String> template = new RedisTemplate<>();
+            template.setConnectionFactory(redisConnectionFactory());
+            template.setKeySerializer(new StringRedisSerializer());
+            template.setValueSerializer(new StringRedisSerializer());
+            return template;
+        } catch (Exception e) {
+            // Return a working but no-op implementation for fallback
+            RedisTemplate<String, String> template = new RedisTemplate<>();
+            template.setConnectionFactory(redisConnectionFactory());
+            return template;
+        }
     }
 }

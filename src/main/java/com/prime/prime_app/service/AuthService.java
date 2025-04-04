@@ -32,6 +32,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
     private final AuthenticationManager authenticationManager;
+    private final UserTokenService userTokenService;
 
     public AuthResponse authenticate(AuthRequest request) {
         // Find user by workId first - primary identifier
@@ -64,6 +65,13 @@ public class AuthService {
 
         String accessToken = jwtUtils.generateToken(user);
         String refreshToken = jwtUtils.generateRefreshToken(user);
+        
+        // Get token ID and store it for single device login
+        String tokenId = jwtUtils.extractTokenId(accessToken);
+        int expirationMs = user.getRoles().stream()
+                .anyMatch(role -> role.getName() == Role.RoleType.ROLE_ADMIN)
+                ? jwtUtils.getAdminJwtExpirationMs() : jwtUtils.getJwtExpirationMs();
+        userTokenService.storeUserToken(user, tokenId, expirationMs);
 
         // Determine user role for proper redirection
         String userRole = determineUserRole(user);
@@ -71,7 +79,7 @@ public class AuthService {
         return AuthResponse.of(
                 accessToken,
                 refreshToken,
-                (long) jwtUtils.getJwtExpirationMs(),
+                (long) expirationMs,
                 user.getWorkId(),
                 user.getEmail(),
                 user.getFirstName(),
@@ -155,6 +163,9 @@ public class AuthService {
     public void logout(User user) {
         // Clear security context
         SecurityContextHolder.clearContext();
+        
+        // Remove user token to enforce single device login
+        userTokenService.removeUserToken(user.getId().toString());
         
         // Update user's last login time
         user.setLastLogin(LocalDateTime.now());

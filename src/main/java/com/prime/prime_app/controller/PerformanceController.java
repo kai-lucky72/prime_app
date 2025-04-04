@@ -1,66 +1,112 @@
 package com.prime.prime_app.controller;
 
-import com.prime.prime_app.dto.performance.PerformanceTrend;
-import com.prime.prime_app.entities.Role;
 import com.prime.prime_app.entities.User;
-import com.prime.prime_app.repository.PerformanceRepository;
-import com.prime.prime_app.repository.UserRepository;
+import com.prime.prime_app.service.AuthService;
+import com.prime.prime_app.service.PerformanceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.List;
+import java.time.LocalDateTime;
+import java.util.Map;
 
+@Slf4j
 @RestController
-@RequestMapping("/api/v1/performance")
+@RequestMapping("/api/performance")
 @RequiredArgsConstructor
-@Tag(name = "Performance", description = "Performance management APIs")
+@Tag(name = "Performance", description = "Performance metrics API endpoints")
 public class PerformanceController {
 
-    private final PerformanceRepository performanceRepository;
-    private final UserRepository userRepository;
-
+    private final AuthService authService;
+    private final PerformanceService performanceService;
+    
     @Operation(
-        summary = "Get performance trend",
-        description = "Get the performance trend of an agent over time"
+        summary = "Get agent performance metrics",
+        description = "Get detailed performance metrics for the current agent"
     )
-    @GetMapping("/trend")
-    public ResponseEntity<List<PerformanceTrend>> getPerformanceTrend(
-            @RequestParam(required = false) Long agentId,
+    @GetMapping("/agent")
+    @PreAuthorize("hasRole('ROLE_AGENT')")
+    public ResponseEntity<Map<String, Object>> getAgentPerformance(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         
-        // Get the authenticated user
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String email = authentication.getName();
-        User currentUser = userRepository.findByEmail(email).orElseThrow();
+        User currentUser = authService.getCurrentUser();
+        log.debug("Agent {} requesting performance metrics", currentUser.getEmail());
         
-        // If agentId is not provided, use the current user as the agent
-        User agent = agentId != null ? 
-                userRepository.findById(agentId).orElseThrow() : 
-                currentUser;
+        Map<String, Object> metrics = performanceService.getPerformanceMetrics(
+                currentUser.getId(),
+                startDate.atStartOfDay(),
+                endDate.plusDays(1).atStartOfDay()
+        );
         
-        // If current user is not the agent and not a manager, throw an exception
-        boolean isManager = currentUser.getRoles().stream()
-                .anyMatch(role -> role.getName() == Role.RoleType.ROLE_MANAGER || 
-                                 role.getName() == Role.RoleType.ROLE_ADMIN);
-                                 
-        if (!currentUser.equals(agent) && !isManager) {
-            throw new IllegalStateException("Unauthorized access. You can only view your own performance trends.");
-        }
+        return ResponseEntity.ok(metrics);
+    }
+    
+    @Operation(
+        summary = "Get agent monthly comparison",
+        description = "Compare current month performance with previous month"
+    )
+    @GetMapping("/agent/monthly-comparison")
+    @PreAuthorize("hasRole('ROLE_AGENT')")
+    public ResponseEntity<Map<String, Object>> getAgentMonthlyComparison() {
+        User currentUser = authService.getCurrentUser();
+        log.debug("Agent {} requesting monthly performance comparison", currentUser.getEmail());
         
-        // Get the performance trend data
-        List<Object[]> trendData = performanceRepository.getPerformanceTrend(agent, startDate, endDate);
+        Map<String, Object> comparison = performanceService.getMonthlyPerformanceComparison(currentUser.getId());
         
-        // Convert to DTO
-        List<PerformanceTrend> trends = PerformanceTrend.fromObjectArray(trendData);
+        return ResponseEntity.ok(comparison);
+    }
+    
+    @Operation(
+        summary = "Get team performance metrics",
+        description = "Get detailed performance metrics for the manager's team"
+    )
+    @GetMapping("/manager/team")
+    @PreAuthorize("hasRole('ROLE_MANAGER')")
+    public ResponseEntity<Map<String, Object>> getTeamPerformance(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         
-        return ResponseEntity.ok(trends);
+        User currentUser = authService.getCurrentUser();
+        log.debug("Manager {} requesting team performance metrics", currentUser.getEmail());
+        
+        Map<String, Object> metrics = performanceService.getTeamPerformanceMetrics(
+                currentUser.getId(),
+                startDate.atStartOfDay(),
+                endDate.plusDays(1).atStartOfDay()
+        );
+        
+        return ResponseEntity.ok(metrics);
+    }
+    
+    @Operation(
+        summary = "Get specific agent performance (for managers)",
+        description = "Get detailed performance metrics for a specific agent"
+    )
+    @GetMapping("/manager/agent/{agentId}")
+    @PreAuthorize("hasRole('ROLE_MANAGER')")
+    public ResponseEntity<Map<String, Object>> getSpecificAgentPerformance(
+            @PathVariable Long agentId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        
+        User currentUser = authService.getCurrentUser();
+        log.debug("Manager {} requesting performance metrics for agent {}", currentUser.getEmail(), agentId);
+        
+        // TODO: Add verification that the agent belongs to this manager
+        
+        Map<String, Object> metrics = performanceService.getPerformanceMetrics(
+                agentId,
+                startDate.atStartOfDay(),
+                endDate.plusDays(1).atStartOfDay()
+        );
+        
+        return ResponseEntity.ok(metrics);
     }
 } 

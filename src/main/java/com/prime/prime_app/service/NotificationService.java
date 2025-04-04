@@ -81,8 +81,10 @@ public class NotificationService {
             throw new IllegalArgumentException("Notification does not belong to the current user");
         }
         
+        log.debug("Marking notification {} as read for user {}", notificationId, user.getEmail());
         notification.setIsRead(true);
         notificationRepository.save(notification);
+        log.debug("Successfully marked notification as read");
     }
 
     /**

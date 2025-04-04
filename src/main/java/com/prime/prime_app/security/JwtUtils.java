@@ -1,5 +1,7 @@
 package com.prime.prime_app.security;
 
+import com.prime.prime_app.entities.Role;
+import com.prime.prime_app.entities.User;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -15,6 +17,7 @@ import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 
 @Slf4j
@@ -30,6 +33,9 @@ public class JwtUtils {
 
     @Value("${app.jwt.refresh-token.expiration}")
     private int refreshExpirationMs;
+    
+    @Value("${app.jwt.admin-expiration:604800000}") // 7 days in milliseconds by default
+    private int adminJwtExpirationMs;
 
     public int getJwtExpirationMs() {
         return jwtExpirationMs;
@@ -38,6 +44,10 @@ public class JwtUtils {
     public int getRefreshExpirationMs() {
         return refreshExpirationMs;
     }
+    
+    public int getAdminJwtExpirationMs() {
+        return adminJwtExpirationMs;
+    }
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
@@ -45,6 +55,10 @@ public class JwtUtils {
 
     public Date extractExpiration(String token) {
         return extractClaim(token, Claims::getExpiration);
+    }
+    
+    public String extractTokenId(String token) {
+        return extractClaim(token, claims -> claims.get("tid", String.class));
     }
 
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
@@ -57,11 +71,32 @@ public class JwtUtils {
     }
 
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
-        return buildToken(extraClaims, userDetails, jwtExpirationMs);
+        // Determine if user is admin for extended expiration
+        long expiration = jwtExpirationMs;
+        if (userDetails instanceof User) {
+            User user = (User) userDetails;
+            boolean isAdmin = user.getRoles().stream()
+                    .anyMatch(role -> role.getName() == Role.RoleType.ROLE_ADMIN);
+                    
+            if (isAdmin) {
+                expiration = adminJwtExpirationMs;
+            }
+        }
+        
+        // Generate a unique token ID
+        String tokenId = UUID.randomUUID().toString();
+        extraClaims.put("tid", tokenId);
+        
+        return buildToken(extraClaims, userDetails, expiration);
     }
 
     public String generateRefreshToken(UserDetails userDetails) {
-        return buildToken(new HashMap<>(), userDetails, refreshExpirationMs);
+        Map<String, Object> extraClaims = new HashMap<>();
+        // Generate a unique token ID
+        String tokenId = UUID.randomUUID().toString();
+        extraClaims.put("tid", tokenId);
+        
+        return buildToken(extraClaims, userDetails, refreshExpirationMs);
     }
 
     private String buildToken(Map<String, Object> extraClaims, UserDetails userDetails, long expiration) {

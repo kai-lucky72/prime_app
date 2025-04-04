@@ -12,4 +12,5 @@ import lombok.NoArgsConstructor;
 public class AttendanceResponse {
     private String status;
     private String redirectTo;
+    private boolean shouldRedirect;
 } 

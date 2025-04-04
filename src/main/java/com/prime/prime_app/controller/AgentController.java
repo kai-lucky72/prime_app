@@ -40,7 +40,7 @@ public class AgentController {
 
     @Operation(
         summary = "Submit attendance",
-        description = "Submit attendance for the currently logged in agent"
+        description = "Submit attendance for the currently logged in agent. Only available between 6:00 AM and 9:00 AM."
     )
     @PostMapping("/attendance")
     @PreAuthorize("hasRole('ROLE_AGENT')")
@@ -48,13 +48,32 @@ public class AgentController {
         User currentUser = authService.getCurrentUser();
         log.debug("Attendance submission received for agent: {}", currentUser.getEmail());
         
-        // In a real implementation, this would save to the database
-        // For now, we'll just create a dummy response
+        // Check if attendance can be submitted at current time
+        if (!attendanceService.canMarkAttendance()) {
+            return ResponseEntity.badRequest().body(AttendanceResponse.builder()
+                    .status("Attendance can only be submitted between 6:00 AM and 9:00 AM")
+                    .redirectTo("/dashboard")
+                    .build());
+        }
         
-        return ResponseEntity.ok(AttendanceResponse.builder()
-                .status("Attendance submitted successfully")
-                .redirectTo("/client-entry")
-                .build());
+        try {
+            // Submit attendance
+            attendanceService.markAttendance(currentUser.getId(), request.getLocation(), request.getSector());
+            
+            // Return successful response with redirect to client entry
+            return ResponseEntity.ok(AttendanceResponse.builder()
+                    .status("Attendance submitted successfully")
+                    .redirectTo("/client-entry")
+                    .shouldRedirect(true)
+                    .build());
+        } catch (IllegalStateException e) {
+            // Handle case where attendance is already submitted
+            return ResponseEntity.badRequest().body(AttendanceResponse.builder()
+                    .status(e.getMessage())
+                    .redirectTo("/client-entry")
+                    .shouldRedirect(true)
+                    .build());
+        }
     }
 
     @Operation(
