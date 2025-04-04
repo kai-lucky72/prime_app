@@ -56,14 +56,21 @@ public class ManagerController {
     @PostMapping("/agents")
     @PreAuthorize("hasRole('ROLE_MANAGER')")
     public ResponseEntity<AgentManagementResponse> addAgent(@Valid @RequestBody AgentManagementRequest request) {
-        User currentUser = authService.getCurrentUser();
-        log.debug("Manager {} creating new agent with workId {}", currentUser.getEmail(), request.getWorkId());
-        
-        managerService.createAndAssignAgent(currentUser.getId(), request);
-        
-        return ResponseEntity.ok(AgentManagementResponse.builder()
-                .status("Agent created and assigned successfully")
-                .build());
+        try {
+            User currentUser = authService.getCurrentUser();
+            log.debug("Manager {} creating new agent with workId {}", currentUser.getEmail(), request.getWorkId());
+            
+            managerService.createAndAssignAgent(currentUser.getId(), request);
+            
+            return ResponseEntity.ok(AgentManagementResponse.builder()
+                    .status("Agent created and assigned successfully")
+                    .build());
+        } catch (Exception e) {
+            log.error("Error creating agent: {}", e.getMessage(), e);
+            return ResponseEntity.ok(AgentManagementResponse.builder()
+                    .status("Error creating agent: " + e.getMessage())
+                    .build());
+        }
     }
     
     @Operation(
@@ -73,14 +80,21 @@ public class ManagerController {
     @DeleteMapping("/agents/{agentId}")
     @PreAuthorize("hasRole('ROLE_MANAGER')")
     public ResponseEntity<AgentManagementResponse> removeAgent(@PathVariable Long agentId) {
-        User currentUser = authService.getCurrentUser();
-        log.debug("Manager {} removing agent {}", currentUser.getEmail(), agentId);
-        
-        managerService.removeAgent(currentUser.getId(), agentId);
-        
-        return ResponseEntity.ok(AgentManagementResponse.builder()
-                .status("Agent removed successfully")
-                .build());
+        try {
+            User currentUser = authService.getCurrentUser();
+            log.debug("Manager {} removing agent {}", currentUser.getEmail(), agentId);
+            
+            managerService.removeAgent(currentUser.getId(), agentId);
+            
+            return ResponseEntity.ok(AgentManagementResponse.builder()
+                    .status("Agent removed successfully")
+                    .build());
+        } catch (Exception e) {
+            log.error("Error removing agent: {}", e.getMessage(), e);
+            return ResponseEntity.ok(AgentManagementResponse.builder()
+                    .status("Error removing agent: " + e.getMessage())
+                    .build());
+        }
     }
 
     @Operation(
@@ -90,14 +104,21 @@ public class ManagerController {
     @PostMapping("/agents/{agentId}/leader")
     @PreAuthorize("hasRole('ROLE_MANAGER')")
     public ResponseEntity<AgentManagementResponse> designateLeader(@PathVariable Long agentId) {
-        User currentUser = authService.getCurrentUser();
-        log.debug("Manager {} designating agent {} as leader", currentUser.getEmail(), agentId);
-        
-        managerService.designateLeader(currentUser.getId(), agentId);
-        
-        return ResponseEntity.ok(AgentManagementResponse.builder()
-                .status("Agent designated as leader successfully")
-                .build());
+        try {
+            User currentUser = authService.getCurrentUser();
+            log.debug("Manager {} designating agent {} as leader", currentUser.getEmail(), agentId);
+            
+            managerService.designateLeader(currentUser.getId(), agentId);
+            
+            return ResponseEntity.ok(AgentManagementResponse.builder()
+                    .status("Agent designated as leader successfully")
+                    .build());
+        } catch (Exception e) {
+            log.error("Error designating leader: {}", e.getMessage(), e);
+            return ResponseEntity.ok(AgentManagementResponse.builder()
+                    .status("Error designating leader: " + e.getMessage())
+                    .build());
+        }
     }
     
     @Operation(

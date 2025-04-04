@@ -81,8 +81,40 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AuthenticationException.class)
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
-    public ResponseEntity<ErrorResponse> handleAuthenticationException(AuthenticationException ex, WebRequest request) {
-        return buildErrorResponse(ex, HttpStatus.UNAUTHORIZED, request);
+    public ResponseEntity<ErrorResponse> handleSpecificAuthenticationException(AuthenticationException ex, WebRequest request) {
+        log.error("Authentication exception: {}", ex.getMessage(), ex);
+        
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.UNAUTHORIZED.value())
+                .error("Authentication Failed")
+                .message(ex.getMessage())
+                .path(request.getDescription(false))
+                .build();
+        
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+    }
+
+    @ExceptionHandler({InsufficientAuthenticationException.class})
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ResponseEntity<ErrorResponse> handleInsufficientAuthenticationException(Exception ex, WebRequest request) {
+        log.error("Authentication error: {}", ex.getMessage(), ex);
+        
+        String message = "Authentication failed";
+        if (ex instanceof BadCredentialsException) {
+            message = "Invalid credentials provided";
+        } else if (ex.getMessage().contains("token")) {
+            message = "Invalid or expired authentication token";
+        }
+        
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.UNAUTHORIZED.value(),
+                message,
+                request.getDescription(false),
+                LocalDateTime.now()
+        );
+        
+        return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
     }
 
     @ExceptionHandler(AccessDeniedException.class)
@@ -114,28 +146,6 @@ public class GlobalExceptionHandler {
         String message = "Authentication token error";
         if (ex instanceof ExpiredJwtException) {
             message = "Your session has expired. Please login again.";
-        }
-        
-        ErrorResponse errorResponse = new ErrorResponse(
-                HttpStatus.UNAUTHORIZED.value(),
-                message,
-                request.getDescription(false),
-                LocalDateTime.now()
-        );
-        
-        return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
-    }
-
-    @ExceptionHandler({AuthenticationException.class, InsufficientAuthenticationException.class})
-    @ResponseStatus(HttpStatus.UNAUTHORIZED)
-    public ResponseEntity<ErrorResponse> handleAuthenticationException(Exception ex, WebRequest request) {
-        log.error("Authentication error: {}", ex.getMessage(), ex);
-        
-        String message = "Authentication failed";
-        if (ex instanceof BadCredentialsException) {
-            message = "Invalid credentials provided";
-        } else if (ex.getMessage().contains("token")) {
-            message = "Invalid or expired authentication token";
         }
         
         ErrorResponse errorResponse = new ErrorResponse(

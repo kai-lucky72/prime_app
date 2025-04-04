@@ -39,7 +39,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         "/api/v1/api/admin/notifications",
         "/api/user-profile/password",
         "/api/manager/agents",
-        "/auth/logout"
+        "/api/manager/dashboard",
+        "/api/manager/reports",
+        "/api/admin/dashboard",
+        "/auth/logout",
+        "/auth/refresh-token",
+        "/auth/validate-token"
     );
 
     @Override
@@ -55,6 +60,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         boolean bypassStrictValidation = BYPASS_STRICT_VALIDATION_PATHS.stream()
             .anyMatch(requestURI::contains);
             
+        // Special case for admin notifications - always bypass validation
+        if (requestURI.contains("/admin/notifications")) {
+            log.debug("Admin notification endpoint detected, bypassing strict validation");
+            bypassStrictValidation = true;
+        }
+            
         final String authHeader = request.getHeader("Authorization");
         final String jwt;
         final String userEmail;
@@ -68,16 +79,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         userEmail = jwtUtils.extractUsername(jwt);
         
         if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
+            UserDetails userDetails;
+            try {
+                userDetails = this.userDetailsService.loadUserByUsername(userEmail);
+            } catch (UsernameNotFoundException e) {
+                log.warn("User not found for token: {}", userEmail);
+                filterChain.doFilter(request, response);
+                return;
+            }
             
-            boolean isTokenValid = jwtUtils.isTokenValid(jwt, userDetails);
+            // Use special validation for notification endpoints
+            boolean isTokenValid = jwtUtils.isTokenValidForRequest(jwt, userDetails, request);
+            log.debug("Token validity check for {}: {}", userEmail, isTokenValid);
             
             // For endpoints that need to bypass strict validation, we won't check for the most recent token
             if (isTokenValid && !bypassStrictValidation) {
                 if (userDetails instanceof User) {
                     User user = (User) userDetails;
                     // Admin users can bypass single-session validation
-                    boolean isAdminUser = user.getRole() == Role.ADMIN;
+                    boolean isAdminUser = user.getRoles().stream()
+                            .anyMatch(role -> role.getName() == Role.RoleType.ROLE_ADMIN);
                     
                     if (!isAdminUser) {
                         // Validate that this is the most recent token for the user

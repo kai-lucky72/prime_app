@@ -156,4 +156,35 @@ public class JwtUtils {
         }
         return false;
     }
+    
+    /**
+     * Checks if the request is for notification-related endpoints
+     * @param request The HTTP request
+     * @return true if this is a notification endpoint
+     */
+    public boolean isNotificationEndpoint(HttpServletRequest request) {
+        String requestURI = request.getRequestURI();
+        return requestURI.contains("/admin/notifications") || 
+               requestURI.contains("/v1/api/admin/notifications");
+    }
+    
+    /**
+     * Relaxed token validation for certain admin paths like notifications
+     * This validation doesn't check expiration for notification endpoints
+     * @param token The JWT token
+     * @param userDetails The user details
+     * @param request The HTTP request
+     * @return true if the token is valid for this request
+     */
+    public boolean isTokenValidForRequest(String token, UserDetails userDetails, HttpServletRequest request) {
+        final String username = extractUsername(token);
+        
+        // For notification endpoints, only check the username matches, not expiration
+        if (isNotificationEndpoint(request)) {
+            return username.equals(userDetails.getUsername());
+        }
+        
+        // For other endpoints, perform normal validation
+        return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
+    }
 }

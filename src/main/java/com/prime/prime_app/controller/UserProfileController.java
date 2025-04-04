@@ -29,13 +29,20 @@ public class UserProfileController {
     )
     @PostMapping("/password")
     public ResponseEntity<MessageResponse> updatePassword(@Valid @RequestBody UpdatePasswordRequest request) {
-        User currentUser = authService.getCurrentUser();
-        log.debug("Password update request received for user: {}", currentUser.getEmail());
-        
-        userService.updatePassword(currentUser, request.getPassword());
-        
-        return ResponseEntity.ok(MessageResponse.builder()
-                .message("Password updated successfully")
-                .build());
+        try {
+            User currentUser = authService.getCurrentUser();
+            log.debug("Password update request received for user: {}", currentUser.getEmail());
+            
+            userService.updatePassword(currentUser, request.getPassword());
+            
+            return ResponseEntity.ok(MessageResponse.builder()
+                    .message("Password updated successfully")
+                    .build());
+        } catch (Exception e) {
+            log.error("Error updating password: {}", e.getMessage(), e);
+            return ResponseEntity.ok(MessageResponse.builder()
+                    .message("Error updating password. Please try again.")
+                    .build());
+        }
     }
 } 

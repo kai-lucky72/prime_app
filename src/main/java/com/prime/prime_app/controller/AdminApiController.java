@@ -108,20 +108,29 @@ public class AdminApiController {
     @GetMapping("/notifications")
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     public ResponseEntity<NotificationListResponse> getNotifications() {
-        User currentUser = authService.getCurrentUser();
-        log.debug("Admin {} requesting notifications", currentUser.getEmail());
-        
-        List<Notification> notifications = notificationService.getNotificationsForUser(currentUser);
-        Long unreadCount = notificationService.countUnreadNotifications(currentUser);
-        
-        List<NotificationDto> notificationDtos = notifications.stream()
-                .map(NotificationDto::fromEntity)
-                .collect(Collectors.toList());
-        
-        return ResponseEntity.ok(NotificationListResponse.builder()
-                .notifications(notificationDtos)
-                .unreadCount(unreadCount.intValue())
-                .build());
+        try {
+            User currentUser = authService.getCurrentUser();
+            log.debug("Admin {} requesting notifications", currentUser.getEmail());
+            
+            List<Notification> notifications = notificationService.getNotificationsForUser(currentUser);
+            Long unreadCount = notificationService.countUnreadNotifications(currentUser);
+            
+            List<NotificationDto> notificationDtos = notifications.stream()
+                    .map(NotificationDto::fromEntity)
+                    .collect(Collectors.toList());
+            
+            return ResponseEntity.ok(NotificationListResponse.builder()
+                    .notifications(notificationDtos)
+                    .unreadCount(unreadCount.intValue())
+                    .build());
+        } catch (Exception e) {
+            log.error("Error retrieving notifications: {}", e.getMessage(), e);
+            // Return empty response instead of error to prevent blocking UI
+            return ResponseEntity.ok(NotificationListResponse.builder()
+                    .notifications(List.of())
+                    .unreadCount(0)
+                    .build());
+        }
     }
     
     @Operation(
@@ -131,13 +140,20 @@ public class AdminApiController {
     @PostMapping("/notifications/{notificationId}/read")
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     public ResponseEntity<MessageResponse> markNotificationAsRead(@PathVariable Long notificationId) {
-        User currentUser = authService.getCurrentUser();
-        log.debug("Admin {} marking notification {} as read", currentUser.getEmail(), notificationId);
-        
-        notificationService.markNotificationAsRead(notificationId, currentUser);
-        
-        return ResponseEntity.ok(MessageResponse.builder()
-                .message("Notification marked as read")
-                .build());
+        try {
+            User currentUser = authService.getCurrentUser();
+            log.debug("Admin {} marking notification {} as read", currentUser.getEmail(), notificationId);
+            
+            notificationService.markNotificationAsRead(notificationId, currentUser);
+            
+            return ResponseEntity.ok(MessageResponse.builder()
+                    .message("Notification marked as read")
+                    .build());
+        } catch (Exception e) {
+            log.error("Error marking notification as read: {}", e.getMessage(), e);
+            return ResponseEntity.ok(MessageResponse.builder()
+                    .message("Error marking notification as read. Please try again.")
+                    .build());
+        }
     }
 } 

@@ -58,7 +58,10 @@ public class SecurityConfig {
                 .requestMatchers("/api-docs/**").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
                 .requestMatchers("/actuator/**").hasRole("ADMIN")
-                // Protected endpoints
+                // Protected endpoints with special handling
+                .requestMatchers("/api/admin/notifications/**").hasRole("ADMIN") 
+                .requestMatchers("/api/v1/api/admin/notifications/**").hasRole("ADMIN")
+                // Other protected endpoints
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/v1/api/admin/**").hasRole("ADMIN")
@@ -77,14 +80,32 @@ public class SecurityConfig {
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .exceptionHandling(exceptionHandling -> exceptionHandling
                 .authenticationEntryPoint((request, response, ex) -> {
+                    // Special handling for API endpoints that should return JSON
+                    String requestURI = request.getRequestURI();
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     response.setContentType("application/json");
-                    response.getWriter().write("{\"error\":\"Unauthorized\",\"message\":\"" + ex.getMessage() + "\"}");
+                    
+                    // Provide a more helpful message based on the type of endpoint
+                    String message = ex.getMessage();
+                    if (message == null || message.isEmpty()) {
+                        message = "Authentication required";
+                    }
+                    
+                    // Special handling for notification endpoints
+                    if (requestURI.contains("/notifications")) {
+                        message = "Please refresh the page to view notifications";
+                    } else if (requestURI.contains("/dashboard")) {
+                        message = "Please refresh the page to view dashboard data";
+                    } else if (requestURI.contains("/agents")) {
+                        message = "Please refresh the page to view agent data";
+                    }
+                    
+                    response.getWriter().write("{\"error\":\"Unauthorized\",\"message\":\"" + message + "\"}");
                 })
                 .accessDeniedHandler((request, response, ex) -> {
                     response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                     response.setContentType("application/json");
-                    response.getWriter().write("{\"error\":\"Forbidden\",\"message\":\"" + ex.getMessage() + "\"}");
+                    response.getWriter().write("{\"error\":\"Forbidden\",\"message\":\"You don't have permission to access this resource\"}");
                 })
             );
 

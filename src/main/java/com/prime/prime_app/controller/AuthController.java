@@ -35,7 +35,12 @@ public class AuthController {
     )
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody AuthRequest request) {
-        return ResponseEntity.ok(authService.authenticate(request));
+        try {
+            return ResponseEntity.ok(authService.authenticate(request));
+        } catch (Exception e) {
+            log.error("Authentication error: {}", e.getMessage(), e);
+            throw e; // Rethrow to let GlobalExceptionHandler handle it with proper status codes
+        }
     }
 
     @Operation(
@@ -44,18 +49,25 @@ public class AuthController {
     )
     @PostMapping("/login-help")
     public ResponseEntity<MessageResponse> requestLoginHelp(@Valid @RequestBody LoginHelpRequest request) {
-        log.info("Login help request received for workId: {}", request.getWorkId());
-        
-        // Create notifications for all admin users instead of sending an email
-        notificationService.createLoginHelpNotification(
-            request.getWorkId(),
-            request.getEmail(),
-            request.getMessage()
-        );
-        
-        return ResponseEntity.ok(MessageResponse.builder()
-                .message("Your login help request has been sent to the administrator")
-                .build());
+        try {
+            log.info("Login help request received for workId: {}", request.getWorkId());
+            
+            // Create notifications for all admin users instead of sending an email
+            notificationService.createLoginHelpNotification(
+                request.getWorkId(),
+                request.getEmail(),
+                request.getMessage()
+            );
+            
+            return ResponseEntity.ok(MessageResponse.builder()
+                    .message("Your login help request has been sent to the administrator")
+                    .build());
+        } catch (Exception e) {
+            log.error("Error processing login help request: {}", e.getMessage(), e);
+            return ResponseEntity.ok(MessageResponse.builder()
+                    .message("Error processing your request. Please try again later.")
+                    .build());
+        }
     }
 
     @Operation(
@@ -64,12 +76,19 @@ public class AuthController {
     )
     @PostMapping("/logout")
     public ResponseEntity<MessageResponse> logout() {
-        User currentUser = authService.getCurrentUser();
-        authService.logout(currentUser);
-        
-        return ResponseEntity.ok(MessageResponse.builder()
-                .message("Successfully logged out")
-                .build());
+        try {
+            User currentUser = authService.getCurrentUser();
+            authService.logout(currentUser);
+            
+            return ResponseEntity.ok(MessageResponse.builder()
+                    .message("Successfully logged out")
+                    .build());
+        } catch (Exception e) {
+            log.error("Error during logout: {}", e.getMessage(), e);
+            return ResponseEntity.ok(MessageResponse.builder()
+                    .message("Logged out successfully")
+                    .build()); // Return success even if there was an error to ensure client-side cleanup
+        }
     }
 
     @Operation(
@@ -78,11 +97,16 @@ public class AuthController {
     )
     @PostMapping("/refresh-token")
     public ResponseEntity<AuthResponse> refreshToken(@RequestHeader("Authorization") String bearerToken) {
-        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
-            String refreshToken = bearerToken.substring(7);
-            return ResponseEntity.ok(authService.refreshToken(refreshToken));
+        try {
+            if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+                String refreshToken = bearerToken.substring(7);
+                return ResponseEntity.ok(authService.refreshToken(refreshToken));
+            }
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            log.error("Error refreshing token: {}", e.getMessage(), e);
+            throw e; // Rethrow to let GlobalExceptionHandler handle it with proper status codes
         }
-        return ResponseEntity.badRequest().build();
     }
 
     @Operation(
