@@ -16,7 +16,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -66,11 +68,13 @@ public class User implements UserDetails {
     }
 
     public Set<Role> getRoles() {
-        return roles;
+        return role != null ? Set.of(role) : Collections.emptySet();
     }
 
     public void setRoles(Set<Role> roles) {
-        this.roles = roles;
+        if (roles != null && !roles.isEmpty()) {
+            this.role = roles.iterator().next();
+        }
     }
 
     public void setLastLogin(LocalDateTime lastLogin) {
@@ -123,14 +127,9 @@ public class User implements UserDetails {
     @Column(name = "login_locked_until")
     private LocalDateTime loginLockedUntil;
 
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(
-        name = "user_roles",
-        joinColumns = @JoinColumn(name = "user_id"),
-        inverseJoinColumns = @JoinColumn(name = "role_id")
-    )
-    @Builder.Default
-    private Set<Role> roles = new HashSet<>();
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "role_id")
+    private Role role;
 
     @Column(nullable = false)
     @Builder.Default
@@ -202,13 +201,10 @@ public class User implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        if (roles == null) {
+        if (role == null || role.getName() == null) {
             return new ArrayList<>();
         }
-        return roles.stream()
-                .filter(role -> role != null && role.getName() != null)
-                .map(role -> new SimpleGrantedAuthority(role.getName().name()))
-                .collect(Collectors.toList());
+        return List.of(new SimpleGrantedAuthority(role.getName().name()));
     }
 
     @Column(name = "is_agent_leader")
@@ -240,14 +236,18 @@ public class User implements UserDetails {
         return enabled;
     }
 
+    public Role getRole() {
+        return role;
+    }
+
+    public void setRole(Role role) {
+        this.role = role;
+    }
+
     public Role.RoleType getPrimaryRole() {
-        if (roles == null || roles.isEmpty()) {
+        if (role == null) {
             return null;
         }
-        return roles.stream()
-                .filter(role -> role != null)
-                .findFirst()
-                .map(Role::getName)
-                .orElse(null);
+        return role.getName();
     }
 }

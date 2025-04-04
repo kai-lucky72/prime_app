@@ -60,4 +60,7 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     List<Attendance> findByAgentAndCheckInTimeBetweenOrderByCheckInTimeDesc(User agent, LocalDateTime start, LocalDateTime end);
     
     List<Attendance> findByManagerAndCheckInTimeBetween(User manager, LocalDateTime start, LocalDateTime end);
+    
+    @Query("SELECT DISTINCT a.agent.id FROM Attendance a WHERE a.checkInTime BETWEEN ?1 AND ?2")
+    List<Long> findAgentIdsWithAttendanceBetween(LocalDateTime start, LocalDateTime end);
 }

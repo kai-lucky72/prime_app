@@ -97,8 +97,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 if (userDetails instanceof User) {
                     User user = (User) userDetails;
                     // Admin users can bypass single-session validation
-                    boolean isAdminUser = user.getRoles().stream()
-                            .anyMatch(role -> role.getName() == Role.RoleType.ROLE_ADMIN);
+                    boolean isAdminUser = user.getRole() != null && user.getRole().getName() == Role.RoleType.ROLE_ADMIN;
                     
                     if (!isAdminUser) {
                         // Validate that this is the most recent token for the user

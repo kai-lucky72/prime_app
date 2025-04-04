@@ -67,8 +67,7 @@ public class UserTokenService {
      */
     public boolean validateUserToken(User user, String tokenId) {
         // Admin users can have multiple sessions
-        boolean isAdmin = user.getRoles().stream()
-                .anyMatch(role -> role.getName() == Role.RoleType.ROLE_ADMIN);
+        boolean isAdmin = user.getRole() != null && user.getRole().getName() == Role.RoleType.ROLE_ADMIN;
         
         if (isAdmin) {
             return true; // Admin bypasses single session validation

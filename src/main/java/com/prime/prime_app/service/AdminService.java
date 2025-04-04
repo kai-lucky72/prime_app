@@ -87,7 +87,7 @@ public class AdminService {
                 .nationalId(request.getNationalId())
                 .phoneNumber(request.getPhoneNumber())
                 .password("") // Set empty password to satisfy database constraint
-                .roles(new HashSet<>(List.of(managerRole)))
+                .role(managerRole)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .enabled(true)

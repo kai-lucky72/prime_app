@@ -68,8 +68,7 @@ public class AuthService {
         
         // Get token ID and store it for single device login
         String tokenId = jwtUtils.extractTokenId(accessToken);
-        int expirationMs = user.getRoles().stream()
-                .anyMatch(role -> role.getName() == Role.RoleType.ROLE_ADMIN)
+        int expirationMs = user.getRole() != null && user.getRole().getName() == Role.RoleType.ROLE_ADMIN
                 ? jwtUtils.getAdminJwtExpirationMs() : jwtUtils.getJwtExpirationMs();
         userTokenService.storeUserToken(user, tokenId, expirationMs);
 
@@ -84,9 +83,7 @@ public class AuthService {
                 user.getEmail(),
                 user.getFirstName(),
                 user.getLastName(),
-                user.getRoles().stream()
-                        .map(role -> role.getName().name())
-                        .collect(Collectors.toSet()),
+                user.getRole() != null ? user.getRole().getName().name() : "",
                 "Authentication successful as " + userRole
         );
     }
@@ -124,9 +121,7 @@ public class AuthService {
                 user.getEmail(),
                 user.getFirstName(),
                 user.getLastName(),
-                user.getRoles().stream()
-                        .map(role -> role.getName().name())
-                        .collect(Collectors.toSet()),
+                user.getRole() != null ? user.getRole().getName().name() : "",
                 "Token refreshed successfully"
         );
     }
@@ -145,18 +140,15 @@ public class AuthService {
     }
     
     public boolean isAdmin(User user) {
-        return user.getRoles().stream()
-                .anyMatch(role -> role.getName() == Role.RoleType.ROLE_ADMIN);
+        return user.getRole() != null && user.getRole().getName() == Role.RoleType.ROLE_ADMIN;
     }
     
     public boolean isManager(User user) {
-        return user.getRoles().stream()
-                .anyMatch(role -> role.getName() == Role.RoleType.ROLE_MANAGER);
+        return user.getRole() != null && user.getRole().getName() == Role.RoleType.ROLE_MANAGER;
     }
     
     public boolean isAgent(User user) {
-        return user.getRoles().stream()
-                .anyMatch(role -> role.getName() == Role.RoleType.ROLE_AGENT);
+        return user.getRole() != null && user.getRole().getName() == Role.RoleType.ROLE_AGENT;
     }
 
     @Transactional

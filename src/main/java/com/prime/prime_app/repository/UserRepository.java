@@ -1,5 +1,6 @@
 package com.prime.prime_app.repository;
 
+import com.prime.prime_app.entities.Role;
 import com.prime.prime_app.entities.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -20,10 +21,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByNationalId(String nationalId);
     Optional<User> findByPhoneNumber(String phoneNumber);
     
-    @Query("SELECT u FROM User u JOIN u.roles r WHERE r.name = 'ROLE_AGENT'")
+    @Query("SELECT u FROM User u WHERE u.role.name = 'ROLE_AGENT'")
     List<User> findAllAgents();
     
-    @Query("SELECT u FROM User u JOIN u.roles r WHERE r.name = 'ROLE_MANAGER'")
+    @Query("SELECT u FROM User u WHERE u.role.name = 'ROLE_MANAGER'")
     List<User> findAllManagers();
     
     @Query("SELECT a.agent FROM ManagerAssignedAgent a WHERE a.manager.id = ?1")
@@ -31,4 +32,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query("SELECT u FROM User u WHERE u.manager = :manager")
     List<User> findAgentsByManager(User manager);
+
+    @Query("SELECT u FROM User u WHERE u.role.name = :roleName")
+    List<User> findAllByRoleName(Role.RoleType roleName);
 }

@@ -40,20 +40,17 @@ public class DataSeeder implements CommandLineRunner {
         // Create admin user if it doesn't exist
         User admin = null;
         if (!userRepository.existsByEmail("admin@prime.com")) {
-            Set<Role> adminRoles = new HashSet<>();
-            adminRoles.add(adminRole);
-
             admin = User.builder()
-                    .firstName("Lcuky")
+                    .firstName("Lucky")
                     .lastName("Kagabo")
                     .name("Admin User")
-                    .email("admin@prime.com")
-                    .username("admin@prime.com")
-                    .workId("admin")
-                    .nationalId("ADMIN1234")
+                    .email("kagabolucky72@gmail.com")
+                    .username("kagabo lucky")
+                    .workId("admin001")
+                    .nationalId("1 2006 8 0281490 0 67")
                     .password(passwordEncoder.encode("admin123"))
                     .phoneNumber("+250723374650")
-                    .roles(adminRoles)
+                    .role(adminRole)
                     .enabled(true)
                     .accountNonExpired(true)
                     .accountNonLocked(true)
@@ -70,9 +67,6 @@ public class DataSeeder implements CommandLineRunner {
         // Create manager user if it doesn't exist
         User manager = null;
         if (!userRepository.existsByEmail("manager@prime.com")) {
-            Set<Role> managerRoles = new HashSet<>();
-            managerRoles.add(managerRole);
-
             manager = User.builder()
                     .firstName("Manager")
                     .lastName("User")
@@ -83,7 +77,7 @@ public class DataSeeder implements CommandLineRunner {
                     .nationalId("MANAGER1234")
                     .password(passwordEncoder.encode("manager123"))
                     .phoneNumber("1234567891")
-                    .roles(managerRoles)
+                    .role(managerRole)
                     .enabled(true)
                     .accountNonExpired(true)
                     .accountNonLocked(true)
@@ -99,8 +93,7 @@ public class DataSeeder implements CommandLineRunner {
 
         // Delete any existing agents that aren't correctly assigned to a manager
         List<User> existingAgents = userRepository.findAll().stream()
-                .filter(user -> user.getRoles().stream()
-                        .anyMatch(role -> role.getName() == Role.RoleType.ROLE_AGENT))
+                .filter(user -> user.getPrimaryRole() == Role.RoleType.ROLE_AGENT)
                 .toList();
 
         for (User agent : existingAgents) {
@@ -115,9 +108,6 @@ public class DataSeeder implements CommandLineRunner {
         // Create agent user if it doesn't exist, assigned to the manager
         final User finalManager = manager;
         if (!userRepository.existsByEmail("agent@prime.com")) {
-            Set<Role> agentRoles = new HashSet<>();
-            agentRoles.add(agentRole);
-
             User agent = User.builder()
                     .firstName("Agent")
                     .lastName("User")
@@ -128,7 +118,7 @@ public class DataSeeder implements CommandLineRunner {
                     .nationalId("AGENT1234")
                     .password(passwordEncoder.encode("agent123"))
                     .phoneNumber("1234567892")
-                    .roles(agentRoles)
+                    .role(agentRole)
                     .manager(finalManager) // Set manager reference
                     .enabled(true)
                     .accountNonExpired(true)

@@ -27,8 +27,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 
     @Query("SELECT n FROM Notification n " +
            "JOIN n.user u " +
-           "JOIN u.roles r " +
-           "WHERE r.name = 'ROLE_AGENT' " +
+           "WHERE u.role.name = 'ROLE_AGENT' " +
            "AND n.type = 'ATTENDANCE_REMINDER' " +
            "AND DATE(n.sendTime) = CURRENT_DATE")
     List<Notification> findTodayAttendanceReminders();

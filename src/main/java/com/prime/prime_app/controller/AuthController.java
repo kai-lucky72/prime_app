@@ -16,6 +16,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -135,9 +137,7 @@ public class AuthController {
                 user.getEmail(),
                 user.getFirstName(),
                 user.getLastName(),
-                user.getRoles().stream()
-                        .map(role -> role.getName().name())
-                        .collect(Collectors.toSet()),
+                user.getRole() != null ? user.getRole().getName().name() : "",
                 "Current user details"
         ));
     }

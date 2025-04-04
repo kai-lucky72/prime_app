@@ -75,8 +75,7 @@ public class JwtUtils {
         long expiration = jwtExpirationMs;
         if (userDetails instanceof User) {
             User user = (User) userDetails;
-            boolean isAdmin = user.getRoles().stream()
-                    .anyMatch(role -> role.getName() == Role.RoleType.ROLE_ADMIN);
+            boolean isAdmin = user.getRole() != null && user.getRole().getName() == Role.RoleType.ROLE_ADMIN;
                     
             if (isAdmin) {
                 expiration = adminJwtExpirationMs;

@@ -29,8 +29,7 @@ public class NotificationService {
     public void createLoginHelpNotification(String workId, String email, String userMessage) {
         // Find all admin users to send notifications to
         List<User> adminUsers = userRepository.findAll().stream()
-                .filter(user -> user.getRoles().stream()
-                        .anyMatch(role -> role.getName() == Role.RoleType.ROLE_ADMIN))
+                .filter(user -> user.getRole() != null && user.getRole().getName() == Role.RoleType.ROLE_ADMIN)
                 .toList();
         
         String title = "Login Help Request";
@@ -92,5 +91,50 @@ public class NotificationService {
      */
     public Long countUnreadNotifications(User user) {
         return notificationRepository.countUnreadByUser(user);
+    }
+
+    /**
+     * Creates a notification for a manager about an agent who didn't mark attendance before 9 AM
+     *
+     * @param agent The agent who didn't mark attendance
+     */
+    @Transactional
+    public void createMissingAttendanceNotification(User agent) {
+        // Find agent's manager
+        User manager = agent.getManager();
+        if (manager == null) {
+            log.warn("Agent {} has no assigned manager, skipping notification", agent.getUsername());
+            return;
+        }
+        
+        String title = "Missing Attendance Alert";
+        String message = String.format("Agent %s (%s) did not mark attendance before 9:00 AM today.",
+                agent.getName(), agent.getWorkId());
+        
+        Notification notification = Notification.builder()
+                .title(title)
+                .message(message)
+                .user(manager)
+                .type("MISSING_ATTENDANCE")
+                .isRead(false)
+                .sent(true)
+                .sendTime(LocalDateTime.now())
+                .build();
+        
+        notificationRepository.save(notification);
+        log.info("Created missing attendance notification for manager: {}", manager.getUsername());
+    }
+    
+    /**
+     * Batch create notifications for all agents who failed to mark attendance today
+     * @param agents List of agents who failed to mark attendance
+     */
+    @Transactional
+    public void createMissingAttendanceNotifications(List<User> agents) {
+        log.info("Creating missing attendance notifications for {} agents", agents.size());
+        
+        for (User agent : agents) {
+            createMissingAttendanceNotification(agent);
+        }
     }
 } 

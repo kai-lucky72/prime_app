@@ -4,7 +4,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import java.util.Set;
 
 @Data
 @Builder
@@ -18,7 +17,7 @@ public class AuthResponse {
     private String email;
     private String firstName;
     private String lastName;
-    private Set<String> roles;
+    private String role;
     private String message;
     
     @Builder.Default
@@ -32,7 +31,7 @@ public class AuthResponse {
             String email,
             String firstName,
             String lastName,
-            Set<String> roles,
+            String role,
             String message
     ) {
         return AuthResponse.builder()
@@ -43,7 +42,7 @@ public class AuthResponse {
                 .email(email)
                 .firstName(firstName)
                 .lastName(lastName)
-                .roles(roles)
+                .role(role)
                 .message(message)
                 .build();
     }

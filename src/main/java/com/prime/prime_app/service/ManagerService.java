@@ -117,9 +117,6 @@ public class ManagerService {
                 .orElseThrow(() -> new ResourceNotFoundException("Agent role not found"));
 
         // Create new agent
-        Set<Role> roles = new HashSet<>();
-        roles.add(agentRole);
-        
         User agent = User.builder()
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
@@ -128,7 +125,7 @@ public class ManagerService {
                 .workId(request.getWorkId())
                 .nationalId(request.getNationalId())
                 .phoneNumber(request.getPhoneNumber())
-                .roles(roles)
+                .role(agentRole)
                 .manager(manager)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())

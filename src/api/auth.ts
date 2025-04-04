@@ -15,11 +15,6 @@ export interface RegisterRequest {
 	phoneNumber: string;
 }
 
-export interface Role {
-	id: number;
-	name: string;
-}
-
 export interface AuthResponse {
 	accessToken: string;
 	refreshToken: string;
@@ -28,7 +23,7 @@ export interface AuthResponse {
 	email: string;
 	firstName: string;
 	lastName: string;
-	roles: Role[];
+	role: string;
 	message: string;
 	type: string;
 }

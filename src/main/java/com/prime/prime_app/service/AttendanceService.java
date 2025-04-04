@@ -1,11 +1,13 @@
 package com.prime.prime_app.service;
 
 import com.prime.prime_app.entities.Attendance;
+import com.prime.prime_app.entities.Role;
 import com.prime.prime_app.entities.User;
 import com.prime.prime_app.exception.ResourceNotFoundException;
 import com.prime.prime_app.repository.AttendanceRepository;
 import com.prime.prime_app.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,6 +17,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AttendanceService {
     private final AttendanceRepository attendanceRepository;
     private final UserRepository userRepository;
@@ -105,5 +108,48 @@ public class AttendanceService {
     public boolean canMarkAttendance() {
         LocalTime currentTime = LocalTime.now();
         return !currentTime.isBefore(START_TIME) && !currentTime.isAfter(END_TIME);
+    }
+
+    /**
+     * Find agents who didn't mark attendance for today
+     * Should be called after 9:00 AM to check for missing attendance
+     * @return List of agents who didn't mark attendance today
+     */
+    public List<User> findAgentsWithMissingAttendance() {
+        LocalDateTime today = LocalDateTime.now().toLocalDate().atStartOfDay();
+        LocalDateTime tomorrow = today.plusDays(1);
+        
+        // Find all agents (users with ROLE_AGENT)
+        List<User> allAgents = userRepository.findAllByRoleName(Role.RoleType.ROLE_AGENT);
+        
+        // Find agents who have marked attendance today
+        List<Long> agentsWithAttendance = attendanceRepository.findAgentIdsWithAttendanceBetween(today, tomorrow);
+        
+        // Filter out agents who have already marked attendance
+        return allAgents.stream()
+                .filter(agent -> !agentsWithAttendance.contains(agent.getId()))
+                .toList();
+    }
+    
+    /**
+     * Process missing attendance alerts
+     * This should be called by a scheduled job after 9:00 AM
+     */
+    @Transactional
+    public void processMissingAttendanceAlerts(NotificationService notificationService) {
+        LocalTime currentTime = LocalTime.now();
+        LocalTime cutoffTime = LocalTime.of(9, 0); // 9:00 AM
+        
+        // Only run this after 9:00 AM
+        if (currentTime.isBefore(cutoffTime)) {
+            log.debug("Not processing missing attendance alerts before 9:00 AM");
+            return;
+        }
+        
+        List<User> agentsWithMissingAttendance = findAgentsWithMissingAttendance();
+        log.info("Found {} agents with missing attendance", agentsWithMissingAttendance.size());
+        
+        // Create notifications for managers
+        notificationService.createMissingAttendanceNotifications(agentsWithMissingAttendance);
     }
 }
