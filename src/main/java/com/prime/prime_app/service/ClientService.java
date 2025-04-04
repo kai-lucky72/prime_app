@@ -134,9 +134,16 @@ public class ClientService {
     }
 
     private Client mapToEntity(ClientRequest request) {
+        String fullName = request.getName();
+        String[] nameParts = fullName.split(" ", 2);
+        String firstName = nameParts[0];
+        String lastName = nameParts.length > 1 ? nameParts[1] : "";
+        
         return Client.builder()
-                .firstName(request.getFirstName())
-                .lastName(request.getLastName())
+                .name(request.getName())
+                .firstName(firstName)
+                .lastName(lastName)
+                .nationalId(request.getNationalId())
                 .email(request.getEmail())
                 .phoneNumber(request.getPhoneNumber())
                 .address(request.getAddress())
@@ -155,8 +162,8 @@ public class ClientService {
     private ClientResponse mapToResponse(Client client) {
         ClientResponse response = ClientResponse.builder()
                 .id(client.getId())
-                .firstName(client.getFirstName())
-                .lastName(client.getLastName())
+                .name(client.getName())
+                .nationalId(client.getNationalId())
                 .email(client.getEmail())
                 .phoneNumber(client.getPhoneNumber())
                 .address(client.getAddress())
@@ -182,8 +189,16 @@ public class ClientService {
     }
 
     private void updateClientFromRequest(Client client, ClientRequest request) {
-        client.setFirstName(request.getFirstName());
-        client.setLastName(request.getLastName());
+        // Update name and synchronize with firstName/lastName
+        String fullName = request.getName();
+        client.setName(fullName);
+        
+        // Split name and update firstName/lastName
+        String[] nameParts = fullName.split(" ", 2);
+        client.setFirstName(nameParts[0]);
+        client.setLastName(nameParts.length > 1 ? nameParts[1] : "");
+        
+        client.setNationalId(request.getNationalId());
         client.setPhoneNumber(request.getPhoneNumber());
         client.setAddress(request.getAddress());
         client.setLocation(request.getLocation());

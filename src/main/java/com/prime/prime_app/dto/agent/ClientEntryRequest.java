@@ -11,15 +11,18 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ClientEntryRequest {
-    @NotBlank(message = "Full name is required")
-    private String full_name;
+    @NotBlank(message = "Name is required")
+    private String name;
     
-    @NotBlank(message = "Contact info is required")
-    private String contact_info;
+    @NotBlank(message = "National ID is required")
+    private String nationalId;
+    
+    @NotBlank(message = "Phone is required")
+    private String phone;
     
     @NotBlank(message = "Insurance type is required")
-    private String insurance_type;
+    private String insuranceType;
     
-    @NotBlank(message = "Location of interaction is required")
-    private String location_of_interaction;
+    @NotBlank(message = "Location of client is required")
+    private String locationOfClient;
 } 

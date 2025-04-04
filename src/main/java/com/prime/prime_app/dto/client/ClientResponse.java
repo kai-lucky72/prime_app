@@ -16,8 +16,8 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class ClientResponse {
     private Long id;
-    private String firstName;
-    private String lastName;
+    private String name;
+    private String nationalId;
     private String email;
     private String phoneNumber;
     private String address;
@@ -48,10 +48,6 @@ public class ClientResponse {
     private LocalDateTime updatedAt;
     
     // Additional helper methods
-    public String getFullName() {
-        return firstName + " " + lastName;
-    }
-    
     public String getAgentFullName() {
         return agentFirstName + " " + agentLastName;
     }

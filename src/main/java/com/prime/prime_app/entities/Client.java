@@ -21,10 +21,16 @@ public class Client {
     private Long id;
 
     @Column(nullable = false)
+    private String name;
+
+    @Column(nullable = false)
     private String firstName;
 
     @Column(nullable = false)
     private String lastName;
+
+    @Column(unique = true, nullable = false)
+    private String nationalId;
 
     @Column(unique = true)
     private String email;
@@ -80,11 +86,23 @@ public class Client {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
+        
+        if (name != null && (firstName == null || lastName == null)) {
+            String[] parts = name.split(" ", 2);
+            firstName = parts[0];
+            lastName = parts.length > 1 ? parts[1] : "";
+        }
     }
 
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+        
+        if (name != null) {
+            String[] parts = name.split(" ", 2);
+            firstName = parts[0];
+            lastName = parts.length > 1 ? parts[1] : "";
+        }
     }
 
     public enum InsuranceType {
@@ -96,10 +114,6 @@ public class Client {
     }
     
     // Convenience getter methods
-    public String getName() {
-        return firstName + " " + lastName;
-    }
-    
     public String getContactNumber() {
         return phoneNumber;
     }

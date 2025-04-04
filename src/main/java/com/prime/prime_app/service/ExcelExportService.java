@@ -17,7 +17,7 @@ import java.util.List;
 public class ExcelExportService {
 
     private static final String[] CLIENT_HEADERS = {
-        "Client Name", "Contact Number", "Insurance Type", "Location",
+        "Client Name", "National ID", "Contact Number", "Insurance Type", "Location",
         "Agent Name", "Interaction Date", "Status"
     };
 
@@ -46,17 +46,18 @@ public class ExcelExportService {
             for (Client client : clients) {
                 Row row = sheet.createRow(rowNum++);
                 
-                row.createCell(0).setCellValue(client.getFirstName() + " " + client.getLastName());
-                row.createCell(1).setCellValue(client.getPhoneNumber());
-                row.createCell(2).setCellValue(client.getInsuranceType().toString());
-                row.createCell(3).setCellValue(client.getLocation());
-                row.createCell(4).setCellValue(client.getAgent().getFirstName() + " " + client.getAgent().getLastName());
+                row.createCell(0).setCellValue(client.getName());
+                row.createCell(1).setCellValue(client.getNationalId());
+                row.createCell(2).setCellValue(client.getPhoneNumber());
+                row.createCell(3).setCellValue(client.getInsuranceType().toString());
+                row.createCell(4).setCellValue(client.getLocation());
+                row.createCell(5).setCellValue(client.getAgent().getName());
                 
-                Cell dateCell = row.createCell(5);
+                Cell dateCell = row.createCell(6);
                 dateCell.setCellValue(client.getTimeOfInteraction().format(dateFormatter));
                 dateCell.setCellStyle(dateStyle);
                 
-                row.createCell(6).setCellValue(client.getPolicyStatus().toString());
+                row.createCell(7).setCellValue(client.getPolicyStatus().toString());
             }
 
             // Auto-size columns

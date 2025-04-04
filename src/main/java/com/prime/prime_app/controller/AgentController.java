@@ -86,15 +86,8 @@ public class AgentController {
         User currentUser = authService.getCurrentUser();
         log.debug("Client interaction logged by agent: {}", currentUser.getEmail());
         
-        // In a real implementation, this would save to the database
-        // For now, we'll just create a dummy response
-        
-        String currentTime = LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME);
-        
-        return ResponseEntity.ok(ClientEntryResponse.builder()
-                .status("Client entry logged")
-                .time_of_interaction(currentTime)
-                .build());
+        ClientEntryResponse response = agentService.logClientInteraction(currentUser, request);
+        return ResponseEntity.ok(response);
     }
 
     @Operation(

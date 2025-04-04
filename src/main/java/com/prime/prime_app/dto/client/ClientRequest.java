@@ -16,15 +16,13 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class ClientRequest {
     
-    @NotBlank(message = "First name is required")
-    @Size(min = 2, max = 50, message = "First name must be between 2 and 50 characters")
-    private String firstName;
+    @NotBlank(message = "Name is required")
+    @Size(min = 2, max = 100, message = "Name must be between 2 and 100 characters")
+    private String name;
     
-    @NotBlank(message = "Last name is required")
-    @Size(min = 2, max = 50, message = "Last name must be between 2 and 50 characters")
-    private String lastName;
+    @NotBlank(message = "National ID is required")
+    private String nationalId;
     
-    @NotBlank(message = "Email is required")
     @Email(message = "Invalid email format")
     private String email;
     
@@ -32,7 +30,6 @@ public class ClientRequest {
     @Pattern(regexp = "^\\+?[1-9]\\d{1,14}$", message = "Invalid phone number format")
     private String phoneNumber;
     
-    @NotBlank(message = "Address is required")
     private String address;
     
     @NotBlank(message = "Location is required")
@@ -40,27 +37,19 @@ public class ClientRequest {
     
     private String sector;
     
-    @NotNull(message = "Date of birth is required")
     @Past(message = "Date of birth must be in the past")
     private LocalDate dateOfBirth;
     
     @NotNull(message = "Insurance type is required")
     private InsuranceType insuranceType;
     
-    @NotBlank(message = "Policy number is required")
-    @Pattern(regexp = "^[A-Z0-9]{8,}$", message = "Policy number must be at least 8 characters long and contain only uppercase letters and numbers")
     private String policyNumber;
     
-    @NotNull(message = "Policy start date is required")
     private LocalDate policyStartDate;
     
-    @NotNull(message = "Policy end date is required")
     private LocalDate policyEndDate;
     
-    @NotNull(message = "Premium amount is required")
-    @Positive(message = "Premium amount must be positive")
     private Double premiumAmount;
     
-    @NotNull(message = "Policy status is required")
     private PolicyStatus policyStatus;
 }

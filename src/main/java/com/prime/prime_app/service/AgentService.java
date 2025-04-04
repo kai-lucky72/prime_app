@@ -95,18 +95,20 @@ public class AgentService {
         WorkLog workLog = workLogRepository.findByAgentAndDate(agent, today)
                 .orElseThrow(() -> new IllegalStateException("Attendance not submitted for today"));
         
-        // Split full name into first and last name
-        String[] nameParts = request.getFull_name().split("\\s+", 2);
+        // Create and save client
+        String fullName = request.getName();
+        String[] nameParts = fullName.split(" ", 2);
         String firstName = nameParts[0];
         String lastName = nameParts.length > 1 ? nameParts[1] : "";
-
-        // Create and save client
+        
         Client client = Client.builder()
+                .name(fullName)
                 .firstName(firstName)
                 .lastName(lastName)
-                .phoneNumber(request.getContact_info())
-                .insuranceType(Client.InsuranceType.valueOf(request.getInsurance_type().toUpperCase()))
-                .address(request.getLocation_of_interaction())
+                .nationalId(request.getNationalId())
+                .phoneNumber(request.getPhone())
+                .insuranceType(Client.InsuranceType.valueOf(request.getInsuranceType().toUpperCase()))
+                .location(request.getLocationOfClient())
                 .agent(agent)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())

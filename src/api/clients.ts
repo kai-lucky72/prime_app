@@ -19,34 +19,34 @@ export enum PolicyStatus {
 
 // Types
 export interface ClientRequest {
-	firstName: string;
-	lastName: string;
-	email: string;
+	name: string;
+	nationalId: string;
+	email?: string;
 	phoneNumber: string;
-	address: string;
-	dateOfBirth: string; // ISO date string
+	address?: string;
+	location: string;
 	insuranceType: InsuranceType;
-	policyNumber: string;
-	policyStartDate: string; // ISO date string
-	policyEndDate: string; // ISO date string
-	premiumAmount: number;
-	policyStatus: PolicyStatus;
+	policyNumber?: string;
+	policyStartDate?: string; // ISO date string
+	policyEndDate?: string; // ISO date string
+	premiumAmount?: number;
+	policyStatus?: PolicyStatus;
 }
 
 export interface ClientResponse {
 	id: number;
-	firstName: string;
-	lastName: string;
-	email: string;
+	name: string;
+	nationalId: string;
+	email?: string;
 	phoneNumber: string;
-	address: string;
-	dateOfBirth: string;
+	address?: string;
+	location: string;
 	insuranceType: InsuranceType;
-	policyNumber: string;
-	policyStartDate: string;
-	policyEndDate: string;
-	premiumAmount: number;
-	policyStatus: PolicyStatus;
+	policyNumber?: string;
+	policyStartDate?: string;
+	policyEndDate?: string;
+	premiumAmount?: number;
+	policyStatus?: PolicyStatus;
 
 	// Agent information
 	agentId: number;
@@ -55,11 +55,11 @@ export interface ClientResponse {
 	agentEmail: string;
 
 	// Policy metrics
-	daysUntilExpiration: number;
-	isExpiringSoon: boolean;
-	totalPremiumsPaid: number;
-	yearsAsClient: number;
-	needsRenewal: boolean;
+	daysUntilExpiration?: number;
+	isExpiringSoon?: boolean;
+	totalPremiumsPaid?: number;
+	yearsAsClient?: number;
+	needsRenewal?: boolean;
 
 	// Timestamps
 	createdAt: string;
