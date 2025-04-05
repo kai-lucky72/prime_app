@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.ArrayList;
 
 @Service
 @RequiredArgsConstructor
@@ -57,14 +58,30 @@ public class NotificationService {
      * Get all notifications for a user
      */
     public List<Notification> getNotificationsForUser(User user) {
-        return notificationRepository.findByUserOrderBySendTimeDesc(user);
+        if (user == null || user.getId() == null) {
+            return new ArrayList<>();
+        }
+        try {
+            return notificationRepository.findByUserOrderBySendTimeDesc(user);
+        } catch (Exception e) {
+            System.err.println("Error retrieving notifications: " + e.getMessage());
+            return new ArrayList<>();
+        }
     }
 
     /**
      * Get unread notifications for a user
      */
     public List<Notification> getUnreadNotificationsForUser(User user) {
-        return notificationRepository.findByUserAndIsReadFalseOrderBySendTimeDesc(user);
+        if (user == null || user.getId() == null) {
+            return new ArrayList<>();
+        }
+        try {
+            return notificationRepository.findByUserAndIsReadFalseOrderBySendTimeDesc(user);
+        } catch (Exception e) {
+            System.err.println("Error retrieving unread notifications: " + e.getMessage());
+            return new ArrayList<>();
+        }
     }
 
     /**
@@ -72,25 +89,47 @@ public class NotificationService {
      */
     @Transactional
     public void markNotificationAsRead(Long notificationId, User user) {
-        Notification notification = notificationRepository.findById(notificationId)
-                .orElseThrow(() -> new IllegalArgumentException("Notification not found"));
-        
-        // Verify the notification belongs to the user
-        if (!notification.getUser().getId().equals(user.getId())) {
-            throw new IllegalArgumentException("Notification does not belong to the current user");
+        if (notificationId == null || user == null || user.getId() == null) {
+            return; // Silently ignore invalid parameters
         }
         
-        log.debug("Marking notification {} as read for user {}", notificationId, user.getEmail());
-        notification.setIsRead(true);
-        notificationRepository.save(notification);
-        log.debug("Successfully marked notification as read");
+        try {
+            Notification notification = notificationRepository.findById(notificationId)
+                    .orElse(null);
+                    
+            if (notification == null) {
+                System.err.println("Notification not found: " + notificationId);
+                return;
+            }
+            
+            // Verify the notification belongs to the user - if not, just return silently
+            if (notification.getUser() == null || 
+                !notification.getUser().getId().equals(user.getId())) {
+                System.err.println("Notification does not belong to the current user");
+                return;
+            }
+            
+            notification.setIsRead(true);
+            notificationRepository.save(notification);
+        } catch (Exception e) {
+            System.err.println("Error marking notification as read: " + e.getMessage());
+            // Absorb the exception instead of propagating it
+        }
     }
 
     /**
      * Count unread notifications for a user
      */
     public Long countUnreadNotifications(User user) {
-        return notificationRepository.countUnreadByUser(user);
+        if (user == null || user.getId() == null) {
+            return 0L;
+        }
+        try {
+            return notificationRepository.countUnreadByUser(user);
+        } catch (Exception e) {
+            System.err.println("Error counting unread notifications: " + e.getMessage());
+            return 0L;
+        }
     }
 
     /**

@@ -14,10 +14,13 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -33,6 +36,7 @@ public class AuthService {
     private final JwtUtils jwtUtils;
     private final AuthenticationManager authenticationManager;
     private final UserTokenService userTokenService;
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     public AuthResponse authenticate(AuthRequest request) {
         // Find user by workId first - primary identifier
@@ -44,11 +48,23 @@ public class AuthService {
             throw new EntityNotFoundException("Invalid credentials: Email does not match Work ID");
         }
         
-        // Only verify password if provided (optional authentication step)
-        if (StringUtils.hasText(request.getPassword())) {
+        // Password validation logic:
+        // 1. If user has no password set -> allow login without password (first login scenario)
+        // 2. If user has password set but no password provided -> reject login
+        // 3. If user has password set and password provided -> validate password
+        if (user.getPassword() != null && StringUtils.hasText(user.getPassword())) {
+            // User has a password set, so password is required
+            if (!StringUtils.hasText(request.getPassword())) {
+                throw new EntityNotFoundException("Password is required for this account");
+            }
+            
+            // Verify password
             if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
                 throw new EntityNotFoundException("Invalid credentials: Password incorrect");
             }
+        } else {
+            // No password set for user - this is allowed for first login
+            log.info("User {} logged in without password (first login or no password set)", user.getEmail());
         }
         
         // Create authentication token with authorities based on user role
@@ -68,12 +84,18 @@ public class AuthService {
         
         // Get token ID and store it for single device login
         String tokenId = jwtUtils.extractTokenId(accessToken);
-        int expirationMs = user.getRole() != null && user.getRole().getName() == Role.RoleType.ROLE_ADMIN
+        long expirationMs = user.getRole() != null && user.getRole().getName() == Role.RoleType.ROLE_ADMIN
                 ? jwtUtils.getAdminJwtExpirationMs() : jwtUtils.getJwtExpirationMs();
         userTokenService.storeUserToken(user, tokenId, expirationMs);
 
         // Determine user role for proper redirection
         String userRole = determineUserRole(user);
+        
+        // Add extra information to response if no password is set
+        String message = "Authentication successful as " + userRole;
+        if (user.getPassword() == null || !StringUtils.hasText(user.getPassword())) {
+            message += ". Note: No password is set for this account. Please set a password in your profile settings.";
+        }
 
         return AuthResponse.of(
                 accessToken,
@@ -84,7 +106,7 @@ public class AuthService {
                 user.getFirstName(),
                 user.getLastName(),
                 user.getRole() != null ? user.getRole().getName().name() : "",
-                "Authentication successful as " + userRole
+                message
         );
     }
     
@@ -116,7 +138,7 @@ public class AuthService {
         return AuthResponse.of(
                 newAccessToken,
                 newRefreshToken,
-                (long) jwtUtils.getJwtExpirationMs(),
+                jwtUtils.getJwtExpirationMs(),
                 user.getWorkId(),
                 user.getEmail(),
                 user.getFirstName(),
@@ -130,13 +152,43 @@ public class AuthService {
         return jwtUtils.validateToken(token);
     }
 
-    @Transactional(readOnly = true)
+    /**
+     * Get current authenticated user from security context
+     * @return The authenticated user
+     * @throws RuntimeException if no authenticated user found
+     */
     public User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new IllegalStateException("No authenticated user found");
+        
+        if (authentication == null) {
+            log.warn("No authentication found in SecurityContext");
+            throw new RuntimeException("No authentication found in SecurityContext");
         }
-        return (User) authentication.getPrincipal();
+        
+        // Extract username from authentication
+        final String username;
+        try {
+            if (authentication.getPrincipal() instanceof UserDetails) {
+                username = ((UserDetails) authentication.getPrincipal()).getUsername();
+            } else if (authentication.getPrincipal() instanceof String) {
+                username = (String) authentication.getPrincipal();
+            } else {
+                log.warn("Unsupported principal type: {}", authentication.getPrincipal().getClass());
+                throw new RuntimeException("Unsupported principal type: " + authentication.getPrincipal().getClass());
+            }
+        } catch (Exception e) {
+            log.error("Error extracting principal: {}", e.getMessage());
+            throw new RuntimeException("Error extracting principal", e);
+        }
+        
+        if (username == null) {
+            log.warn("Username is null in authentication: {}", authentication);
+            throw new RuntimeException("Username is null in authentication");
+        }
+        
+        log.debug("Looking up current user with username: {}", username);
+        return userRepository.findByEmail(username)
+                .orElseThrow(() -> new RuntimeException("User not found for username: " + username));
     }
     
     public boolean isAdmin(User user) {
@@ -162,5 +214,49 @@ public class AuthService {
         // Update user's last login time
         user.setLastLogin(LocalDateTime.now());
         userRepository.save(user);
+    }
+
+    /**
+     * Set or update a user's password
+     * @param userId The ID of the user
+     * @param newPassword The new password to set
+     * @return true if successful, false otherwise
+     */
+    @Transactional
+    public boolean setUserPassword(Long userId, String newPassword) {
+        try {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new EntityNotFoundException("User not found"));
+            
+            user.setPassword(passwordEncoder.encode(newPassword));
+            userRepository.save(user);
+            return true;
+        } catch (Exception e) {
+            log.error("Error setting password for user {}: {}", userId, e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Reset a user's password (admin function)
+     * @param workId The work ID of the user
+     * @return true if successful, false otherwise
+     */
+    @Transactional
+    public boolean resetUserPassword(String workId) {
+        try {
+            User user = userRepository.findByWorkId(workId)
+                    .orElseThrow(() -> new EntityNotFoundException("User not found with work ID: " + workId));
+            
+            // Reset the password to null (no password)
+            user.setPassword(null);
+            userRepository.save(user);
+            
+            log.info("Password reset for user {} by admin", workId);
+            return true;
+        } catch (Exception e) {
+            log.error("Error resetting password for user {}: {}", workId, e.getMessage());
+            return false;
+        }
     }
 }

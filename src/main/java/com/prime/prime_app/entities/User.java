@@ -250,6 +250,10 @@ public class User implements UserDetails {
         this.role = role;
     }
 
+    /**
+     * Get the primary role of this user
+     * @return The primary role or null if no role assigned
+     */
     public Role.RoleType getPrimaryRole() {
         if (role == null) {
             return null;
