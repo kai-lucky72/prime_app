@@ -53,7 +53,7 @@ public class JwtUtils {
         try {
             return extractClaim(token, Claims::getSubject);
         } catch (Exception e) {
-            log.warn("Error extracting username from token: {}", e.getMessage());
+            log.error("Error extracting username from token: {}", e.getMessage());
             return null;
         }
     }
@@ -67,8 +67,13 @@ public class JwtUtils {
     }
 
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = extractAllClaims(token);
-        return claimsResolver.apply(claims);
+        try {
+            final Claims claims = extractAllClaims(token);
+            return claimsResolver.apply(claims);
+        } catch (Exception e) {
+            log.error("Error extracting claim from token: {}", e.getMessage());
+            return null;
+        }
     }
 
     public String generateToken(UserDetails userDetails) {
@@ -130,18 +135,16 @@ public class JwtUtils {
 
     private Claims extractAllClaims(String token) {
         try {
-            return Jwts
-                    .parserBuilder()
+            return Jwts.parserBuilder()
                     .setSigningKey(getSignInKey())
                     .build()
                     .parseClaimsJws(token)
                     .getBody();
         } catch (ExpiredJwtException e) {
-            // For expired tokens, still return the claims for username extraction
-            log.warn("Token expired but extracting claims anyway");
-            return e.getClaims();
+            log.warn("JWT token is expired: {}", e.getMessage());
+            throw e;
         } catch (Exception e) {
-            log.error("Error extracting claims from token: {}", e.getMessage());
+            log.error("Error parsing JWT token: {}", e.getMessage());
             throw e;
         }
     }

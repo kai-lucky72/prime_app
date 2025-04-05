@@ -23,6 +23,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Service
 @RequiredArgsConstructor
 public class AdminService {
@@ -32,30 +35,50 @@ public class AdminService {
     private final PasswordEncoder passwordEncoder;
     private final AuthService authService;
 
+    private static final Logger log = LoggerFactory.getLogger(AdminService.class);
+
     /**
      * Get list of all managers
      */
     @Transactional(readOnly = true)
     public ManagerListResponse getAllManagers() {
         try {
-            List<User> managers = userRepository.findAll().stream()
-                    .filter(user -> user != null && user.getRole() != null && 
-                           user.getRole().getName() == Role.RoleType.ROLE_MANAGER)
+            log.info("Fetching all managers from database");
+            List<User> allUsers = userRepository.findAll();
+            log.info("Total users found: {}", allUsers.size());
+            
+            List<User> managers = allUsers.stream()
+                    .filter(user -> {
+                        boolean hasRole = user != null && user.getRole() != null;
+                        if (!hasRole) {
+                            log.warn("Found user with null role: {}", user != null ? user.getEmail() : "null");
+                            return false;
+                        }
+                        
+                        log.info("User: {}, Role: {}", user.getEmail(), user.getRole().getName());
+                        return user.getRole().getName().equals(Role.RoleType.ROLE_MANAGER);
+                    })
                     .collect(Collectors.toList());
+            
+            log.info("Found {} managers", managers.size());
             
             List<ManagerListResponse.ManagerDto> managerDtos = managers.stream()
-                    .map(manager -> ManagerListResponse.ManagerDto.builder()
-                            .id(manager.getId() != null ? manager.getId().toString() : "0")
-                            .name(manager.getName() != null ? manager.getName() : "Unknown Manager")
-                            .build())
+                    .map(manager -> {
+                        log.info("Converting manager to DTO: {}, ID: {}", manager.getName(), manager.getId());
+                        return ManagerListResponse.ManagerDto.builder()
+                                .id(manager.getId() != null ? manager.getId().toString() : "0")
+                                .name(manager.getName() != null ? manager.getName() : "Unknown Manager")
+                                .build();
+                    })
                     .collect(Collectors.toList());
             
+            log.info("Returning {} manager DTOs", managerDtos.size());
             return ManagerListResponse.builder()
                     .managers(managerDtos)
                     .build();
         } catch (Exception e) {
             // Log the error but return an empty list instead of throwing exception
-            System.err.println("Error retrieving managers: " + e.getMessage());
+            log.error("Error retrieving managers: {}", e.getMessage(), e);
             return ManagerListResponse.builder()
                     .managers(new ArrayList<>())
                     .build();
@@ -68,23 +91,32 @@ public class AdminService {
     @Transactional
     public ManagerResponse addManager(AddManagerRequest request) {
         try {
+            // Add detailed logging
+            log.info("Starting process to add manager with workId: {}", request.getWorkId());
+            
             // Validate unique constraints
             if (userRepository.existsByEmail(request.getEmail())) {
+                log.warn("Email {} already exists in the system", request.getEmail());
                 throw new IllegalStateException("Email already exists");
             }
             if (userRepository.existsByWorkId(request.getWorkId())) {
+                log.warn("WorkId {} already exists in the system", request.getWorkId());
                 throw new IllegalStateException("Work ID already exists");
             }
             if (userRepository.existsByNationalId(request.getNationalId())) {
+                log.warn("NationalId {} already exists in the system", request.getNationalId());
                 throw new IllegalStateException("National ID already exists");
             }
             if (userRepository.existsByPhoneNumber(request.getPhoneNumber())) {
+                log.warn("PhoneNumber {} already exists in the system", request.getPhoneNumber());
                 throw new IllegalStateException("Phone number already exists");
             }
     
             // Get manager role
             Role managerRole = roleRepository.findByName(Role.RoleType.ROLE_MANAGER)
                     .orElseThrow(() -> new EntityNotFoundException("Manager role not found"));
+            
+            log.info("Found manager role: {}", managerRole.getName());
     
             // Create new user with manager role - no password set initially
             User manager = User.builder()
@@ -106,12 +138,15 @@ public class AdminService {
                     .credentialsNonExpired(true)
                     .build();
             
+            log.info("Created manager object, saving to database...");
             userRepository.save(manager);
+            log.info("Successfully saved manager with ID: {}", manager.getId());
             
             return ManagerResponse.builder()
                     .status("Manager added successfully. Manager can login with workId and email, no password required for first login.")
                     .build();
         } catch (Exception e) {
+            log.error("Error adding manager: {}", e.getMessage(), e);
             throw new RuntimeException("Error adding manager: " + e.getMessage(), e);
         }
     }
@@ -153,12 +188,25 @@ public class AdminService {
     @Transactional(readOnly = true)
     public AgentListResponse getAllAgents() {
         try {
+            log.info("Fetching all agents from database");
+            List<User> allUsers = userRepository.findAll();
+            log.info("Total users found: {}", allUsers.size());
+            
             // Find all users with ROLE_AGENT
-            List<User> agents = userRepository.findAll().stream()
-                    .filter(user -> user != null && user.getRole() != null && 
-                           user.getRole().getName() == Role.RoleType.ROLE_AGENT)
+            List<User> agents = allUsers.stream()
+                    .filter(user -> {
+                        boolean hasRole = user != null && user.getRole() != null;
+                        if (!hasRole) {
+                            log.warn("Found user with null role: {}", user != null ? user.getEmail() : "null");
+                            return false;
+                        }
+                        
+                        log.info("User: {}, Role: {}", user.getEmail(), user.getRole().getName());
+                        return user.getRole().getName().equals(Role.RoleType.ROLE_AGENT);
+                    })
                     .collect(Collectors.toList());
             
+            log.info("Found {} agents", agents.size());
             List<AgentListResponse.AgentDto> agentDtos = new ArrayList<>();
             
             for (User agent : agents) {
@@ -187,16 +235,65 @@ public class AdminService {
                         .manager_id(managerId)
                         .manager_name(managerName)
                         .build());
+                
+                log.info("Added agent DTO: {}, ID: {}", agent.getName(), agent.getId());
             }
             
+            log.info("Returning {} agent DTOs", agentDtos.size());
             return AgentListResponse.builder()
                     .agents(agentDtos)
                     .build();
         } catch (Exception e) {
             // Log the error but return an empty list instead of throwing exception
-            System.err.println("Error retrieving agents: " + e.getMessage());
+            log.error("Error retrieving agents: {}", e.getMessage(), e);
             return AgentListResponse.builder()
                     .agents(new ArrayList<>())
+                    .build();
+        }
+    }
+
+    /**
+     * Add a manager directly with minimal validation for testing purposes
+     */
+    @Transactional
+    public ManagerResponse addManagerDirectly(AddManagerRequest request) {
+        try {
+            log.info("Adding manager directly (bypassing authentication): {}", request.getWorkId());
+            
+            // Get manager role directly
+            Role managerRole = roleRepository.findByName(Role.RoleType.ROLE_MANAGER)
+                    .orElseThrow(() -> new RuntimeException("Manager role not found"));
+            
+            // Create user object directly with minimal validation
+            User manager = User.builder()
+                    .firstName(request.getFirstName())
+                    .lastName(request.getLastName())
+                    .name(request.getFirstName() + " " + request.getLastName())
+                    .email(request.getEmail())
+                    .workId(request.getWorkId())
+                    .username(request.getWorkId())
+                    .nationalId(request.getNationalId())
+                    .phoneNumber(request.getPhoneNumber())
+                    .password(null) // No password set initially
+                    .role(managerRole)
+                    .createdAt(LocalDateTime.now())
+                    .updatedAt(LocalDateTime.now())
+                    .enabled(true)
+                    .accountNonExpired(true)
+                    .accountNonLocked(true)
+                    .credentialsNonExpired(true)
+                    .build();
+            
+            // Save directly
+            userRepository.save(manager);
+            
+            return ManagerResponse.builder()
+                    .status("Manager added successfully through direct method. Login with workId without password.")
+                    .build();
+        } catch (Exception e) {
+            log.error("Error in direct manager creation: {}", e.getMessage(), e);
+            return ManagerResponse.builder()
+                    .status("Error: " + e.getMessage())
                     .build();
         }
     }

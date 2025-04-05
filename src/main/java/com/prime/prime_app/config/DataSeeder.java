@@ -39,11 +39,12 @@ public class DataSeeder implements CommandLineRunner {
 
         // Create admin user if it doesn't exist
         User admin = null;
-        if (!userRepository.existsByEmail("admin@prime.com")) {
+        // Check both emails to avoid duplication
+        if (!userRepository.existsByEmail("kagabolucky72@gmail.com") && !userRepository.existsByEmail("admin@prime.com")) {
             admin = User.builder()
                     .firstName("Lucky")
                     .lastName("Kagabo")
-                    .name("Admin User")
+                    .name("Lucky Kagabo")
                     .email("kagabolucky72@gmail.com")
                     .username("kagabo lucky")
                     .workId("admin")
@@ -61,7 +62,9 @@ public class DataSeeder implements CommandLineRunner {
 
             userRepository.save(admin);
         } else {
-            admin = userRepository.findByEmail("admin@prime.com").get();
+            // Try to find by either email
+            admin = userRepository.findByEmail("kagabolucky72@gmail.com")
+                    .orElseGet(() -> userRepository.findByEmail("admin@prime.com").orElse(null));
         }
 
         // Create manager user if it doesn't exist

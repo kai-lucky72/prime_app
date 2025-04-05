@@ -32,22 +32,19 @@ public class UserTokenService {
      */
     public void storeUserToken(User user, String tokenId, long expirationMs) {
         if (user == null || user.getId() == null) {
-            log.warn("Cannot store token for null user or user without ID");
+            log.error("Cannot store token for null user or user without ID");
             return;
         }
         
         String userId = user.getId().toString();
-        String key = "user_token:" + userId;
+        long expiration = System.currentTimeMillis() + expirationMs;
+        log.info("Storing token {} for user {} with expiration {}", tokenId, userId, expiration);
         
         try {
-            // Try to use Redis first
-            stringRedisTemplate.opsForValue().set(key, tokenId);
-            stringRedisTemplate.expire(key, expirationMs, TimeUnit.MILLISECONDS);
-            log.debug("Stored token for user {} in Redis with expiration {} ms", userId, expirationMs);
-        } catch (Exception e) {
-            // Fallback to in-memory if Redis is not available
+            // Store the token with userId and expiration time
             userTokenMap.put(userId, tokenId);
-            log.debug("Stored token for user {} in memory (Redis unavailable): {}", userId, e.getMessage());
+        } catch (Exception e) {
+            log.error("Error storing token for user {}: {}", userId, e.getMessage());
         }
     }
     

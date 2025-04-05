@@ -161,34 +161,51 @@ public class AuthService {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         
         if (authentication == null) {
-            log.warn("No authentication found in SecurityContext");
-            throw new RuntimeException("No authentication found in SecurityContext");
+            log.error("No authentication found in SecurityContext - user is not logged in");
+            throw new RuntimeException("No authentication found in SecurityContext - user not logged in");
         }
+        
+        // Log authentication details for debugging
+        log.info("Authentication details: Principal type: {}, Authenticated: {}, Authorities: {}", 
+                 authentication.getPrincipal() != null ? authentication.getPrincipal().getClass().getName() : "null",
+                 authentication.isAuthenticated(),
+                 authentication.getAuthorities());
         
         // Extract username from authentication
         final String username;
         try {
             if (authentication.getPrincipal() instanceof UserDetails) {
                 username = ((UserDetails) authentication.getPrincipal()).getUsername();
+                log.info("Extracted username from UserDetails: {}", username);
+            } else if (authentication.getPrincipal() instanceof User) {
+                User user = (User) authentication.getPrincipal();
+                username = user.getEmail();
+                log.info("Principal is already a User object: {}", username);
             } else if (authentication.getPrincipal() instanceof String) {
                 username = (String) authentication.getPrincipal();
+                log.info("Extracted username from String principal: {}", username);
             } else {
-                log.warn("Unsupported principal type: {}", authentication.getPrincipal().getClass());
-                throw new RuntimeException("Unsupported principal type: " + authentication.getPrincipal().getClass());
+                log.error("Unsupported principal type: {}", 
+                         authentication.getPrincipal() != null ? 
+                         authentication.getPrincipal().getClass().getName() : "null");
+                throw new RuntimeException("Unsupported principal type in authentication");
             }
         } catch (Exception e) {
-            log.error("Error extracting principal: {}", e.getMessage());
-            throw new RuntimeException("Error extracting principal", e);
+            log.error("Error extracting principal: {}", e.getMessage(), e);
+            throw new RuntimeException("Error extracting user information from authentication", e);
         }
         
         if (username == null) {
-            log.warn("Username is null in authentication: {}", authentication);
+            log.error("Username is null in authentication");
             throw new RuntimeException("Username is null in authentication");
         }
         
-        log.debug("Looking up current user with username: {}", username);
+        log.info("Looking up current user with username: {}", username);
         return userRepository.findByEmail(username)
-                .orElseThrow(() -> new RuntimeException("User not found for username: " + username));
+                .orElseThrow(() -> {
+                    log.error("User not found in database for username: {}", username);
+                    return new RuntimeException("User not found for username: " + username);
+                });
     }
     
     public boolean isAdmin(User user) {
@@ -257,6 +274,25 @@ public class AuthService {
         } catch (Exception e) {
             log.error("Error resetting password for user {}: {}", workId, e.getMessage());
             return false;
+        }
+    }
+
+    /**
+     * Find a user by email
+     * @param email The email to search for
+     * @return The user if found, null otherwise
+     */
+    public User findUserByEmail(String email) {
+        if (email == null || email.trim().isEmpty()) {
+            log.warn("Attempted to find user with null or empty email");
+            return null;
+        }
+        
+        try {
+            return userRepository.findByEmail(email).orElse(null);
+        } catch (Exception e) {
+            log.error("Error finding user by email {}: {}", email, e.getMessage());
+            return null;
         }
     }
 }
