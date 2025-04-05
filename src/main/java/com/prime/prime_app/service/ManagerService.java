@@ -1,10 +1,23 @@
 package com.prime.prime_app.service;
 
-import com.prime.prime_app.dto.manager.*;
-import com.prime.prime_app.entities.*;
+import com.prime.prime_app.dto.manager.AgentListResponse;
+import com.prime.prime_app.dto.manager.AgentManagementRequest;
+import com.prime.prime_app.dto.manager.ManagerDashboardResponse;
+import com.prime.prime_app.dto.manager.ReportsResponse;
+import com.prime.prime_app.entities.Attendance;
+import com.prime.prime_app.entities.Client;
+import com.prime.prime_app.entities.ManagerAssignedAgent;
+import com.prime.prime_app.entities.Role;
+import com.prime.prime_app.entities.User;
 import com.prime.prime_app.exception.ResourceNotFoundException;
-import com.prime.prime_app.repository.*;
+import com.prime.prime_app.repository.AttendanceRepository;
+import com.prime.prime_app.repository.ClientRepository;
+import com.prime.prime_app.repository.ManagerAssignedAgentRepository;
+import com.prime.prime_app.repository.PerformanceRepository;
+import com.prime.prime_app.repository.RoleRepository;
+import com.prime.prime_app.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +38,7 @@ public class ManagerService {
     private final ManagerAssignedAgentRepository managerAssignmentRepository;
     private final PerformanceRepository performanceRepository;
     private final RoleRepository roleRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional(readOnly = true)
     public List<AgentListResponse.AgentDto> getAgentsWithStatus(Long managerId) {
@@ -116,13 +130,16 @@ public class ManagerService {
         Role agentRole = roleRepository.findByName(Role.RoleType.ROLE_AGENT)
                 .orElseThrow(() -> new ResourceNotFoundException("Agent role not found"));
 
-        // Create new agent
+        // Create new agent with default password
+        String username = request.getEmail(); // Use email as username
+        
         User agent = User.builder()
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
                 .name(request.getFirstName() + " " + request.getLastName())
                 .email(request.getEmail())
                 .workId(request.getWorkId())
+                .username(username)
                 .nationalId(request.getNationalId())
                 .phoneNumber(request.getPhoneNumber())
                 .role(agentRole)

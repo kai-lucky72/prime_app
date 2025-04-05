@@ -164,7 +164,8 @@ public class JwtUtils {
     public boolean isNotificationEndpoint(HttpServletRequest request) {
         String requestURI = request.getRequestURI();
         return requestURI.contains("/admin/notifications") || 
-               requestURI.contains("/v1/api/admin/notifications");
+               requestURI.contains("/v1/api/admin/notifications") ||
+               requestURI.contains("/admin/managers");
     }
     
     /**

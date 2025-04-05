@@ -35,16 +35,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     // List of endpoints that should bypass strict token validation
     // Add any endpoints here that cause token validation issues after operations
     private static final List<String> BYPASS_STRICT_VALIDATION_PATHS = Arrays.asList(
-        "/api/admin/notifications",
-        "/api/v1/api/admin/notifications",
-        "/api/user-profile/password",
-        "/api/manager/agents",
-        "/api/manager/dashboard",
-        "/api/manager/reports",
-        "/api/admin/dashboard",
-        "/auth/logout",
-        "/auth/refresh-token",
-        "/auth/validate-token"
+        "/api/admin/",
+        "/api/v1/api/admin/",
+        "/api/user-profile/",
+        "/api/manager/",
+        "/api/agent/",
+        "/auth/"
     );
 
     @Override
@@ -60,12 +56,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         boolean bypassStrictValidation = BYPASS_STRICT_VALIDATION_PATHS.stream()
             .anyMatch(requestURI::contains);
             
-        // Special case for admin notifications - always bypass validation
-        if (requestURI.contains("/admin/notifications")) {
-            log.debug("Admin notification endpoint detected, bypassing strict validation");
-            bypassStrictValidation = true;
-        }
-            
         final String authHeader = request.getHeader("Authorization");
         final String jwt;
         final String userEmail;
@@ -76,7 +66,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
         
         jwt = authHeader.substring(7);
-        userEmail = jwtUtils.extractUsername(jwt);
+        
+        try {
+            userEmail = jwtUtils.extractUsername(jwt);
+        } catch (Exception e) {
+            log.warn("Failed to extract username from token: {}", e.getMessage());
+            filterChain.doFilter(request, response);
+            return;
+        }
         
         if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails;
@@ -88,27 +85,39 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 return;
             }
             
-            // Use special validation for notification endpoints
-            boolean isTokenValid = jwtUtils.isTokenValidForRequest(jwt, userDetails, request);
-            log.debug("Token validity check for {}: {}", userEmail, isTokenValid);
-            
-            // For endpoints that need to bypass strict validation, we won't check for the most recent token
-            if (isTokenValid && !bypassStrictValidation) {
-                if (userDetails instanceof User) {
+            // Use special validation for notification endpoints or special paths
+            boolean isTokenValid;
+            if (bypassStrictValidation) {
+                // For bypassed paths, just check the username matches
+                isTokenValid = userEmail.equals(userDetails.getUsername());
+                log.debug("Bypassing strict validation for path: {}, token valid: {}", requestURI, isTokenValid);
+            } else {
+                // Normal validation including expiration
+                isTokenValid = jwtUtils.isTokenValid(jwt, userDetails);
+                
+                // For non-bypassed paths, also check if it's the most recent token (if not admin)
+                if (isTokenValid && userDetails instanceof User) {
                     User user = (User) userDetails;
                     // Admin users can bypass single-session validation
                     boolean isAdminUser = user.getRole() != null && user.getRole().getName() == Role.RoleType.ROLE_ADMIN;
                     
                     if (!isAdminUser) {
-                        // Validate that this is the most recent token for the user
-                        // This ensures single-device login
-                        String tokenId = jwtUtils.extractTokenId(jwt);
-                        String storedTokenId = userTokenService.getUserTokenId(userEmail);
-                        
-                        if (storedTokenId == null || !storedTokenId.equals(tokenId)) {
-                            log.debug("Token ID mismatch for user {}: current={}, stored={}", 
-                                userEmail, tokenId, storedTokenId);
-                            isTokenValid = false;
+                        try {
+                            // Validate that this is the most recent token for the user
+                            // This ensures single-device login
+                            String tokenId = jwtUtils.extractTokenId(jwt);
+                            String userId = user.getId().toString(); 
+                            String storedTokenId = userTokenService.getUserTokenId(userId);
+                            
+                            if (storedTokenId == null || !storedTokenId.equals(tokenId)) {
+                                log.debug("Token ID mismatch for user {}: current={}, stored={}", 
+                                    userEmail, tokenId, storedTokenId);
+                                isTokenValid = false;
+                            }
+                        } catch (Exception e) {
+                            log.warn("Error validating token ID: {}", e.getMessage());
+                            // On error, still allow the token (fail open for better UX)
+                            isTokenValid = true;
                         }
                     }
                 }

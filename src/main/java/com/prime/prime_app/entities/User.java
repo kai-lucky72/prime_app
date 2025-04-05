@@ -104,7 +104,7 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private String username;
 
-    @Column
+    @Column(nullable = true)
     @JsonIgnore
     private String password;
 
@@ -184,9 +184,15 @@ public class User implements UserDetails {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
+        
         // Set name as a combination of first and last name if not provided
         if (name == null && firstName != null && lastName != null) {
             name = firstName + " " + lastName;
+        }
+        
+        // Set username to email if not provided 
+        if (username == null && email != null) {
+            username = email;
         }
     }
 
