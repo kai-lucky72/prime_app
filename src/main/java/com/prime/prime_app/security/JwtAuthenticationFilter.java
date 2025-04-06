@@ -99,34 +99,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 return;
             }
             
-            // Always authenticate the user if we got this far
-            log.info("Setting SecurityContext authentication for user: {}", userEmail);
-            
-            // Check if userDetails is a User object already
-            if (userDetails instanceof User) {
-                log.info("UserDetails is already a User object, using it directly");
+            // Validate token
+            if (jwtUtils.validateToken(jwt)) {
+                log.info("Token is valid for user: {}", userEmail);
+                
+                // Create authentication token
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         userDetails,
                         null,
                         userDetails.getAuthorities());
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
+                
+                log.info("Authentication set in SecurityContext with authorities: {}", 
+                        userDetails.getAuthorities());
             } else {
-                // For standard UserDetails, use it normally
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails,
-                        null,
-                        userDetails.getAuthorities());
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+                log.warn("Invalid JWT token for user: {}", userEmail);
             }
-            
-            log.info("Authentication set in SecurityContext with authorities: {}", 
-                    userDetails.getAuthorities());
             
             // Record this successful authentication
             successfulAuthentications.put(jwt, System.currentTimeMillis());
-            
         } catch (Exception e) {
             log.error("Error processing JWT token: {}", e.getMessage(), e);
         }

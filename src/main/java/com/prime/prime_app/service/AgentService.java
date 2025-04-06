@@ -85,51 +85,76 @@ public class AgentService {
      */
     @Transactional
     public ClientEntryResponse logClientInteraction(User agent, ClientEntryRequest request) {
-        // Check if agent is assigned to a manager
-        if (!isAgentAssignedToManager(agent)) {
-            throw new IllegalStateException("Agent is not assigned to any manager");
+        try {
+            // Check if agent is assigned to a manager
+            if (!isAgentAssignedToManager(agent)) {
+                throw new IllegalStateException("Agent is not assigned to any manager");
+            }
+            
+            // Check if proper attendance was submitted for today (between 6-9 AM)
+            LocalDate today = LocalDate.now();
+            WorkLog workLog = workLogRepository.findByAgentAndDate(agent, today)
+                    .orElseThrow(() -> new IllegalStateException(
+                        "Attendance not submitted for today. Please submit attendance between 6:00 AM and 9:00 AM before logging clients."));
+            
+            // Create and save client
+            String fullName = request.getName();
+            String[] nameParts = fullName.split(" ", 2);
+            String firstName = nameParts[0];
+            String lastName = nameParts.length > 1 ? nameParts[1] : "";
+            
+            // Safely convert insurance type
+            Client.InsuranceType insuranceType;
+            try {
+                insuranceType = Client.InsuranceType.valueOf(request.getInsuranceType().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                // Default to HEALTH if not recognized
+                insuranceType = Client.InsuranceType.HEALTH;
+            }
+            
+            LocalDateTime now = LocalDateTime.now();
+            
+            Client client = Client.builder()
+                    .name(fullName)
+                    .firstName(firstName)
+                    .lastName(lastName)
+                    .nationalId(request.getNationalId())
+                    .phoneNumber(request.getPhone())
+                    .insuranceType(insuranceType)
+                    .location(request.getLocationOfClient())
+                    .agent(agent)
+                    .timeOfInteraction(now)
+                    .createdAt(now)
+                    .updatedAt(now)
+                    .policyStatus(PolicyStatus.PENDING)
+                    .policyStartDate(LocalDate.now())
+                    .policyEndDate(LocalDate.now().plusYears(1))
+                    .premiumAmount(0.0) // Will be set later
+                    .dateOfBirth(LocalDate.now()) // Should be updated later
+                    .build();
+                    
+            clientRepository.save(client);
+            
+            // Update work log with clients served count
+            workLog.setClientsServed(workLog.getClientsServed() + 1);
+            workLogRepository.save(workLog);
+            
+            // Return response
+            return ClientEntryResponse.builder()
+                    .status("Client entry logged successfully")
+                    .time_of_interaction(now.format(DateTimeFormatter.ISO_DATE_TIME))
+                    .build();
+        } catch (Exception e) {
+            // Log the exception for debugging
+            System.out.println("Error in logClientInteraction: " + e.getMessage());
+            e.printStackTrace();
+            
+            // Return a more helpful error message
+            return ClientEntryResponse.builder()
+                    .status("Error: " + e.getMessage())
+                    .time_of_interaction(LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME))
+                    .build();
         }
-        
-        // Check if attendance is submitted for today
-        LocalDate today = LocalDate.now();
-        WorkLog workLog = workLogRepository.findByAgentAndDate(agent, today)
-                .orElseThrow(() -> new IllegalStateException("Attendance not submitted for today"));
-        
-        // Create and save client
-        String fullName = request.getName();
-        String[] nameParts = fullName.split(" ", 2);
-        String firstName = nameParts[0];
-        String lastName = nameParts.length > 1 ? nameParts[1] : "";
-        
-        Client client = Client.builder()
-                .name(fullName)
-                .firstName(firstName)
-                .lastName(lastName)
-                .nationalId(request.getNationalId())
-                .phoneNumber(request.getPhone())
-                .insuranceType(Client.InsuranceType.valueOf(request.getInsuranceType().toUpperCase()))
-                .location(request.getLocationOfClient())
-                .agent(agent)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .policyStatus(PolicyStatus.PENDING)
-                .policyStartDate(LocalDate.now())
-                .policyEndDate(LocalDate.now().plusYears(1))
-                .premiumAmount(0.0) // Will be set later
-                .dateOfBirth(LocalDate.now()) // Should be updated later
-                .build();
-                
-        clientRepository.save(client);
-        
-        // Update work log with clients served count
-        workLog.setClientsServed(workLog.getClientsServed() + 1);
-        workLogRepository.save(workLog);
-        
-        // Return response
-        return ClientEntryResponse.builder()
-                .status("Client entry logged")
-                .time_of_interaction(LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME))
-                .build();
     }
     
     /**

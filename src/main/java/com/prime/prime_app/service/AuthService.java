@@ -171,28 +171,21 @@ public class AuthService {
                  authentication.isAuthenticated(),
                  authentication.getAuthorities());
         
-        // Extract username from authentication
-        final String username;
-        try {
-            if (authentication.getPrincipal() instanceof UserDetails) {
-                username = ((UserDetails) authentication.getPrincipal()).getUsername();
-                log.info("Extracted username from UserDetails: {}", username);
-            } else if (authentication.getPrincipal() instanceof User) {
-                User user = (User) authentication.getPrincipal();
-                username = user.getEmail();
-                log.info("Principal is already a User object: {}", username);
-            } else if (authentication.getPrincipal() instanceof String) {
-                username = (String) authentication.getPrincipal();
-                log.info("Extracted username from String principal: {}", username);
-            } else {
-                log.error("Unsupported principal type: {}", 
-                         authentication.getPrincipal() != null ? 
-                         authentication.getPrincipal().getClass().getName() : "null");
-                throw new RuntimeException("Unsupported principal type in authentication");
-            }
-        } catch (Exception e) {
-            log.error("Error extracting principal: {}", e.getMessage(), e);
-            throw new RuntimeException("Error extracting user information from authentication", e);
+        // First check if it's a User object
+        if (authentication.getPrincipal() instanceof User) {
+            log.info("Principal is already a User object, returning directly");
+            return (User) authentication.getPrincipal();
+        }
+        
+        String username = null;
+        
+        // Extract username from principal
+        if (authentication.getPrincipal() instanceof UserDetails) {
+            username = ((UserDetails) authentication.getPrincipal()).getUsername();
+            log.info("Extracted username from UserDetails: {}", username);
+        } else if (authentication.getPrincipal() instanceof String) {
+            username = (String) authentication.getPrincipal();
+            log.info("Extracted username from String principal: {}", username);
         }
         
         if (username == null) {
@@ -201,11 +194,29 @@ public class AuthService {
         }
         
         log.info("Looking up current user with username: {}", username);
-        return userRepository.findByEmail(username)
-                .orElseThrow(() -> {
-                    log.error("User not found in database for username: {}", username);
-                    return new RuntimeException("User not found for username: " + username);
-                });
+        
+        // Try to find by workId first - this is often how users are identified
+        User user = userRepository.findByWorkId(username).orElse(null);
+        log.info("Lookup by workId '{}' result: {}", username, user != null ? "found" : "not found");
+        
+        // If not found, try by email next
+        if (user == null) {
+            user = userRepository.findByEmail(username).orElse(null);
+            log.info("Lookup by email '{}' result: {}", username, user != null ? "found" : "not found");
+        }
+        
+        // Finally try by username field
+        if (user == null) {
+            user = userRepository.findByUsername(username).orElse(null);
+            log.info("Lookup by username '{}' result: {}", username, user != null ? "found" : "not found");
+        }
+        
+        if (user == null) {
+            log.error("User not found in database for identifier: {}", username);
+            throw new RuntimeException("User not found for username: " + username);
+        }
+        
+        return user;
     }
     
     public boolean isAdmin(User user) {

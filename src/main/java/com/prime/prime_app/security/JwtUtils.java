@@ -109,10 +109,19 @@ public class JwtUtils {
     }
 
     private String buildToken(Map<String, Object> extraClaims, UserDetails userDetails, long expiration) {
+        String subject = userDetails.getUsername();
+        
+        // Use workId as the subject for User entities
+        if (userDetails instanceof User) {
+            User user = (User) userDetails;
+            subject = user.getWorkId();
+            log.info("Using workId '{}' as JWT subject for user {}", subject, user.getEmail());
+        }
+        
         return Jwts
                 .builder()
                 .setClaims(extraClaims)
-                .setSubject(userDetails.getUsername())
+                .setSubject(subject)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(getSignInKey(), SignatureAlgorithm.HS256)

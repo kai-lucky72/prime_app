@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -83,11 +84,29 @@ public class AgentController {
     @PostMapping("/client-entry")
     @PreAuthorize("hasRole('ROLE_AGENT')")
     public ResponseEntity<ClientEntryResponse> logClientInteraction(@Valid @RequestBody ClientEntryRequest request) {
-        User currentUser = authService.getCurrentUser();
-        log.debug("Client interaction logged by agent: {}", currentUser.getEmail());
-        
-        ClientEntryResponse response = agentService.logClientInteraction(currentUser, request);
-        return ResponseEntity.ok(response);
+        try {
+            User currentUser = authService.getCurrentUser();
+            log.debug("Client interaction request from agent: {}", currentUser.getEmail());
+            
+            ClientEntryResponse response = agentService.logClientInteraction(currentUser, request);
+            
+            if (response.getStatus().startsWith("Error:")) {
+                // Return 400 Bad Request for validation errors
+                return ResponseEntity.badRequest().body(response);
+            }
+            
+            log.info("Client interaction successfully logged by agent: {}", currentUser.getEmail());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Unexpected error logging client interaction: {}", e.getMessage(), e);
+            
+            ClientEntryResponse errorResponse = ClientEntryResponse.builder()
+                .status("Error: " + e.getMessage())
+                .time_of_interaction(LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME))
+                .build();
+                
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
     }
 
     @Operation(
