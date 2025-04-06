@@ -58,18 +58,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String requestURI = request.getRequestURI();
         log.debug("Processing request: {}", requestURI);
         
-        // Special handling - completely bypass authentication for testing for all admin and manager endpoints
-        if (requestURI.contains("/api/admin/") || 
-            requestURI.contains("/api/v1/api/admin/") || 
-            requestURI.contains("/admin/") ||
-            requestURI.contains("/api/manager/") ||
-            requestURI.contains("/api/v1/api/manager/") ||
-            requestURI.contains("/manager/")) {
-            log.info("Bypassing all authentication for admin/manager endpoint: {}", requestURI);
-            filterChain.doFilter(request, response);
-            return;
-        }
-        
         // Get Authorization header
         final String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {

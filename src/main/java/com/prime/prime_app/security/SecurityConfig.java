@@ -51,10 +51,10 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers("/test/encode").permitAll()
-                // Completely open all admin endpoints for direct testing
-                .requestMatchers("/api/admin/**").permitAll()
-                .requestMatchers("/api/v1/api/admin/**").permitAll()
-                .requestMatchers("/admin/**").permitAll()
+                // Admin endpoints - restricted to ADMIN role only
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/v1/api/admin/**").hasRole("ADMIN")
+                .requestMatchers("/admin/**").hasRole("ADMIN")
                 // Swagger UI endpoints
                 .requestMatchers("/swagger-ui.html").permitAll()
                 .requestMatchers("/swagger-ui/**").permitAll()
@@ -63,11 +63,11 @@ public class SecurityConfig {
                 .requestMatchers("/actuator/health").permitAll()
                 .requestMatchers("/actuator/**").hasRole("ADMIN")
                 // Notification endpoints - accessible to anyone with a valid token
-                .requestMatchers("/*/notifications/**").permitAll()
-                // Manager endpoints - also made public for testing
-                .requestMatchers("/manager/**").permitAll()
-                .requestMatchers("/api/manager/**").permitAll()
-                .requestMatchers("/api/v1/api/manager/**").permitAll()
+                .requestMatchers("/*/notifications/**").authenticated()
+                // Manager endpoints - restricted to MANAGER role only
+                .requestMatchers("/manager/**").hasRole("MANAGER")
+                .requestMatchers("/api/manager/**").hasRole("MANAGER")
+                .requestMatchers("/api/v1/api/manager/**").hasRole("MANAGER")
                 // Agent endpoints
                 .requestMatchers("/agent/**").hasAnyRole("ADMIN", "MANAGER", "AGENT")
                 .requestMatchers("/api/agent/**").hasAnyRole("ADMIN", "MANAGER", "AGENT")
