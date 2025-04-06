@@ -3,6 +3,7 @@ package com.prime.prime_app.controller;
 import com.prime.prime_app.dto.auth.AuthRequest;
 import com.prime.prime_app.dto.auth.AuthResponse;
 import com.prime.prime_app.dto.auth.LoginHelpRequest;
+import com.prime.prime_app.dto.auth.ForgotPasswordRequest;
 import com.prime.prime_app.dto.common.MessageResponse;
 import com.prime.prime_app.entities.User;
 import com.prime.prime_app.service.AuthService;
@@ -140,5 +141,31 @@ public class AuthController {
                 user.getRole() != null ? user.getRole().getName().name() : "",
                 "Current user details"
         ));
+    }
+    
+    @Operation(
+        summary = "Forgot password",
+        description = "Send a password reset request to the admin as an in-app notification"
+    )
+    @PostMapping("/forgot-password")
+    public ResponseEntity<MessageResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        try {
+            log.info("Password reset request received for workId: {}", request.getWorkId());
+            
+            // Create notifications for all admin users
+            notificationService.createPasswordResetNotification(
+                request.getWorkId(),
+                request.getEmail()
+            );
+            
+            return ResponseEntity.ok(MessageResponse.builder()
+                    .message("Your password reset request has been sent to the administrator")
+                    .build());
+        } catch (Exception e) {
+            log.error("Error processing password reset request: {}", e.getMessage(), e);
+            return ResponseEntity.ok(MessageResponse.builder()
+                    .message("Error processing your request. Please try again later.")
+                    .build());
+        }
     }
 }

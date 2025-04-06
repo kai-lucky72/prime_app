@@ -176,4 +176,38 @@ public class NotificationService {
             createMissingAttendanceNotification(agent);
         }
     }
+
+    /**
+     * Creates a notification for admins about a password reset request
+     *
+     * @param workId The work ID of the user requesting password reset
+     * @param email The email of the user requesting password reset
+     */
+    @Transactional
+    public void createPasswordResetNotification(String workId, String email) {
+        // Find all admin users to send notifications to
+        List<User> adminUsers = userRepository.findAll().stream()
+                .filter(user -> user.getRole() != null && user.getRole().getName() == Role.RoleType.ROLE_ADMIN)
+                .toList();
+        
+        String title = "Password Reset Request";
+        String message = String.format("User with Work ID '%s' and email '%s' has requested a password reset.", 
+                workId, email);
+
+        log.info("Creating password reset notifications for {} admins", adminUsers.size());
+        
+        for (User admin : adminUsers) {
+            Notification notification = Notification.builder()
+                    .user(admin)
+                    .title(title)
+                    .message(message)
+                    .type("PASSWORD_RESET")
+                    .isRead(false)
+                    .sent(true)
+                    .sendTime(LocalDateTime.now())
+                    .build();
+            
+            notificationRepository.save(notification);
+        }
+    }
 } 
