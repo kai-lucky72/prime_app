@@ -232,6 +232,7 @@ public class AdminService {
                         .name(agent.getName() != null ? agent.getName() : "Unknown Agent")
                         .email(agent.getEmail() != null ? agent.getEmail() : "")
                         .workId(agent.getWorkId() != null ? agent.getWorkId() : "")
+                        .nationalId(agent.getNationalId() != null ? agent.getNationalId() : "")
                         .manager_id(managerId)
                         .manager_name(managerName)
                         .build());

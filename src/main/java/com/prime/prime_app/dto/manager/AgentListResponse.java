@@ -22,6 +22,7 @@ public class AgentListResponse {
         private String name;
         private String email;
         private String phoneNumber;
+        private String nationalId;
         private boolean isLeader;
         private String attendanceStatus;
         private Integer clientsServed;

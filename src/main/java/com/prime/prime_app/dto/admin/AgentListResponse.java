@@ -22,6 +22,7 @@ public class AgentListResponse {
         private String name;
         private String email;
         private String workId;
+        private String nationalId;
         private String manager_id;
         private String manager_name;
     }

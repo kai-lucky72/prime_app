@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.ByteArrayInputStream;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -31,6 +32,7 @@ public class ManagerController {
     private final AgentService agentService;
     private final AttendanceService attendanceService;
     private final ExcelExportService excelExportService;
+    private final ReportExportService reportExportService;
     
     @Operation(
         summary = "Get agents",
@@ -147,29 +149,47 @@ public class ManagerController {
 
     @Operation(
         summary = "Export client data",
-        description = "Export client data to Excel for the specified date range"
+        description = "Export client data as Excel or PDF for the specified date range"
     )
     @GetMapping("/reports/export")
     @PreAuthorize("hasRole('ROLE_MANAGER')")
-    public ResponseEntity<InputStreamResource> exportReports(@RequestParam String startDate,
-                                                           @RequestParam String endDate) {
+    public ResponseEntity<InputStreamResource> exportReports(
+            @RequestParam String startDate,
+            @RequestParam String endDate,
+            @RequestParam(defaultValue = "pdf") String format) {
+        
         User currentUser = authService.getCurrentUser();
-        log.debug("Manager {} exporting reports", currentUser.getEmail());
+        log.debug("Manager {} exporting reports in {} format", currentUser.getEmail(), format);
 
         LocalDateTime start = LocalDate.parse(startDate).atStartOfDay();
         LocalDateTime end = LocalDate.parse(endDate).atTime(23, 59, 59);
 
         var clients = managerService.getClientsForExport(currentUser.getId(), start, end);
-        var excelFile = excelExportService.exportClientsToExcel(clients);
-
+        
         HttpHeaders headers = new HttpHeaders();
-        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=clients_report.xlsx");
+        ByteArrayInputStream fileStream;
+        MediaType mediaType;
+        String filename;
+        
+        // Choose format based on request parameter
+        if ("excel".equalsIgnoreCase(format)) {
+            fileStream = excelExportService.exportClientsToExcel(clients);
+            mediaType = MediaType.parseMediaType("application/vnd.ms-excel");
+            filename = "clients_report.xlsx";
+            headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename);
+        } else {
+            // Default to PDF
+            fileStream = reportExportService.exportClientsToPdf(clients);
+            mediaType = MediaType.APPLICATION_PDF;
+            filename = "clients_report.pdf";
+            headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename);
+        }
 
         return ResponseEntity
                 .ok()
                 .headers(headers)
-                .contentType(MediaType.parseMediaType("application/vnd.ms-excel"))
-                .body(new InputStreamResource(excelFile));
+                .contentType(mediaType)
+                .body(new InputStreamResource(fileStream));
     }
 
     @Operation(

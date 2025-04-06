@@ -59,6 +59,7 @@ public class ManagerService {
                             .name(agent.getName())
                             .email(agent.getEmail())
                             .phoneNumber(agent.getPhoneNumber())
+                            .nationalId(agent.getNationalId())
                             .isLeader(assignment.isLeader())
                             .attendanceStatus(attendanceStatus)
                             .clientsServed(clientsServed)
