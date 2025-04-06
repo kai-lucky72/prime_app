@@ -5,8 +5,17 @@ import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
-import com.lowagie.text.*;
-import com.lowagie.text.pdf.*;
+import com.lowagie.text.Document;
+import com.lowagie.text.DocumentException;
+import com.lowagie.text.Element;
+import com.lowagie.text.Font;
+import com.lowagie.text.FontFactory;
+import com.lowagie.text.PageSize;
+import com.lowagie.text.Paragraph;
+import com.lowagie.text.Phrase;
+import com.lowagie.text.pdf.PdfPCell;
+import com.lowagie.text.pdf.PdfPTable;
+import com.lowagie.text.pdf.PdfWriter;
 import java.awt.Color;
 
 import java.io.ByteArrayInputStream;
@@ -136,7 +145,7 @@ public class ReportExportService {
 
     private CellStyle createHeaderStyle(Workbook workbook) {
         CellStyle style = workbook.createCellStyle();
-        Font font = workbook.createFont();
+        org.apache.poi.ss.usermodel.Font font = workbook.createFont();
         font.setBold(true);
         style.setFont(font);
         style.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
