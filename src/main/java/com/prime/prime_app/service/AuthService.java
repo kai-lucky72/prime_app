@@ -21,11 +21,14 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.prime.prime_app.security.JwtService;
+import org.springframework.security.authentication.BadCredentialsException;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -36,56 +39,78 @@ public class AuthService {
     private final JwtUtils jwtUtils;
     private final AuthenticationManager authenticationManager;
     private final UserTokenService userTokenService;
+    private final JwtService jwtService;
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
+    /**
+     * Authenticate user by workId and email
+     * @param request The authentication request
+     * @return AuthResponse with JWT token
+     */
+    @Transactional
     public AuthResponse authenticate(AuthRequest request) {
-        try {
-            // Authenticate user
-            Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getWorkId(), request.getPassword())
-            );
-            
-            // Set security context
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-            
-            // Get user details
-            User user = this.getCurrentUser();
-            if (user == null) {
-                throw new IllegalStateException("User not found after authentication");
-            }
-            
-            // Update last login time
-            user.setLastLogin(LocalDateTime.now());
-            user.setLoginAttempts(0); // Reset login attempts
-            userRepository.save(user);
-            
-            // Generate JWT token
-            String token = jwtUtils.generateToken(user);
-            String refreshToken = jwtUtils.generateRefreshToken(user);
-            
-            String message = "Authentication successful";
-            if (user.getPassword() == null) {
-                message += ". Note: No password is set for this account. Please set a password in your profile settings.";
-            }
-            
-            return AuthResponse.of(
-                    token,
-                    refreshToken,
-                    jwtUtils.getExpirationTime(),
-                    user.getWorkId(),
-                    user.getEmail(),
-                    user.getFirstName(),
-                    user.getLastName(),
-                    user.getRole() != null ? user.getRole().getName().name() : "",
-                    user.getProfileImageUrl(),
-                    message
-            );
-        } catch (Exception e) {
-            log.error("Error authenticating user: {}", e.getMessage());
-            throw new RuntimeException("Error authenticating user", e);
-        }
+        // Find user by workId and email
+        User user = userRepository.findByWorkIdAndEmail(request.getWorkId(), request.getEmail())
+                .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
+        
+        // Update last login time
+        user.setLastLoginAt(LocalDateTime.now());
+        userRepository.save(user);
+        
+        // Generate token
+        String token = jwtService.generateToken(user);
+        
+        return AuthResponse.builder()
+                .token(token)
+                .workId(user.getWorkId())
+                .email(user.getEmail())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .role(user.getRole().getName().name())
+                .message("Authentication successful")
+                .build();
     }
     
+    /**
+     * Get the currently authenticated user
+     * @return The authenticated user
+     */
+    @Transactional(readOnly = true)
+    public User getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new BadCredentialsException("User not found or not authenticated"));
+    }
+    
+    /**
+     * Check if the given email exists
+     * @param email The email to check
+     * @return True if email exists, false otherwise
+     */
+    public boolean emailExists(String email) {
+        return userRepository.existsByEmail(email);
+    }
+    
+    /**
+     * Check if the given workId exists
+     * @param workId The workId to check
+     * @return True if workId exists, false otherwise
+     */
+    public boolean workIdExists(String workId) {
+        return userRepository.existsByWorkId(workId);
+    }
+    
+    /**
+     * Find a user by workId
+     * @param workId The workId to search for
+     * @return Optional User if found
+     */
+    public Optional<User> findUserByWorkId(String workId) {
+        return userRepository.findByWorkId(workId);
+    }
+
     private String determineUserRole(User user) {
         if (isAdmin(user)) {
             return "ADMIN";
@@ -128,73 +153,6 @@ public class AuthService {
         return jwtUtils.validateToken(token);
     }
 
-    /**
-     * Get current authenticated user from security context
-     * @return The authenticated user
-     * @throws RuntimeException if no authenticated user found
-     */
-    public User getCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        
-        if (authentication == null) {
-            log.error("No authentication found in SecurityContext - user is not logged in");
-            throw new RuntimeException("No authentication found in SecurityContext - user not logged in");
-        }
-        
-        // Log authentication details for debugging
-        log.info("Authentication details: Principal type: {}, Authenticated: {}, Authorities: {}", 
-                 authentication.getPrincipal() != null ? authentication.getPrincipal().getClass().getName() : "null",
-                 authentication.isAuthenticated(),
-                 authentication.getAuthorities());
-        
-        // First check if it's a User object
-        if (authentication.getPrincipal() instanceof User) {
-            log.info("Principal is already a User object, returning directly");
-            return (User) authentication.getPrincipal();
-        }
-        
-        String username = null;
-        
-        // Extract username from principal
-        if (authentication.getPrincipal() instanceof UserDetails) {
-            username = ((UserDetails) authentication.getPrincipal()).getUsername();
-            log.info("Extracted username from UserDetails: {}", username);
-        } else if (authentication.getPrincipal() instanceof String) {
-            username = (String) authentication.getPrincipal();
-            log.info("Extracted username from String principal: {}", username);
-        }
-        
-        if (username == null) {
-            log.error("Username is null in authentication");
-            throw new RuntimeException("Username is null in authentication");
-        }
-        
-        log.info("Looking up current user with username: {}", username);
-        
-        // Try to find by workId first - this is often how users are identified
-        User user = userRepository.findByWorkId(username).orElse(null);
-        log.info("Lookup by workId '{}' result: {}", username, user != null ? "found" : "not found");
-        
-        // If not found, try by email next
-        if (user == null) {
-            user = userRepository.findByEmail(username).orElse(null);
-            log.info("Lookup by email '{}' result: {}", username, user != null ? "found" : "not found");
-        }
-        
-        // Finally try by username field
-        if (user == null) {
-            user = userRepository.findByUsername(username).orElse(null);
-            log.info("Lookup by username '{}' result: {}", username, user != null ? "found" : "not found");
-        }
-        
-        if (user == null) {
-            log.error("User not found in database for identifier: {}", username);
-            throw new RuntimeException("User not found for username: " + username);
-        }
-        
-        return user;
-    }
-    
     public boolean isAdmin(User user) {
         return user.getRole() != null && user.getRole().getName() == Role.RoleType.ROLE_ADMIN;
     }

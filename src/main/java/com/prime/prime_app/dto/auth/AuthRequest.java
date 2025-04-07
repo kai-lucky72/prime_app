@@ -20,6 +20,6 @@ public class AuthRequest {
     @Email(message = "Invalid email format")
     private String email;
 
-    @Schema(description = "Optional password - only required for subsequent logins if the user has set a password", required = false)
+    @Schema(description = "Optional password - only required for subsequent logins if the user has set a password", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private String password;
 }

@@ -263,4 +263,7 @@ public class User implements UserDetails {
         }
         return role.getName();
     }
+
+    @Column(name = "last_login_at")
+    private LocalDateTime lastLoginAt;
 }

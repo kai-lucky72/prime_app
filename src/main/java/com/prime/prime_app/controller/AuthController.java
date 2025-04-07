@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
-@RequestMapping("/auth")
+@RequestMapping({"/auth", "/api/v1/auth"})
 @RequiredArgsConstructor
 @Tag(name = "Authentication", description = "Authentication management APIs")
 public class AuthController {
@@ -33,16 +33,18 @@ public class AuthController {
 
     @Operation(
         summary = "Authenticate user",
-        description = "Authenticate a user with workId and email. Password is optional for first-time logins. " +
-                "Returns JWT token upon successful authentication."
+        description = "Authenticate a user with workId and email. Returns JWT token upon successful authentication."
     )
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody AuthRequest request) {
+        log.info("Login request received for workId: {}", request.getWorkId());
+        
         try {
-            return ResponseEntity.ok(authService.authenticate(request));
+            AuthResponse response = authService.authenticate(request);
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
-            log.error("Authentication error: {}", e.getMessage(), e);
-            throw e; // Rethrow to let GlobalExceptionHandler handle it with proper status codes
+            log.error("Authentication error for workId {}: {}", request.getWorkId(), e.getMessage(), e);
+            throw e; // Let exception handler provide appropriate response
         }
     }
 

@@ -13,6 +13,7 @@ public class AuthResponse {
     private String token;
     private String refreshToken;
     private Long expiresIn;
+    private Long userId;
     private String workId;
     private String email;
     private String firstName;
@@ -20,6 +21,7 @@ public class AuthResponse {
     private String role;
     private String profileImageUrl;
     private String message;
+    private String name;
     
     @Builder.Default
     private String type = "Bearer";
@@ -43,6 +45,7 @@ public class AuthResponse {
                 .email(email)
                 .firstName(firstName)
                 .lastName(lastName)
+                .name(firstName + " " + lastName)
                 .role(role)
                 .profileImageUrl(null)
                 .message(message)
@@ -69,6 +72,7 @@ public class AuthResponse {
                 .email(email)
                 .firstName(firstName)
                 .lastName(lastName)
+                .name(firstName + " " + lastName)
                 .role(role)
                 .profileImageUrl(profileImageUrl)
                 .message(message)
