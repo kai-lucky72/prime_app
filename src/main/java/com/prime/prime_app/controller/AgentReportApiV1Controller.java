@@ -22,12 +22,16 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * This controller handles the /api/v1/agent/reports/* URL pattern for backward compatibility.
+ * Only endpoints with explicit v1 versioning belong here.
+ */
 @Slf4j
 @RestController
-@RequestMapping("/api/agent/reports")
+@RequestMapping("/api/v1/agent/reports")
 @RequiredArgsConstructor
-@Tag(name = "Agent Reports", description = "Agent reporting endpoints")
-public class AgentReportController {
+@Tag(name = "Agent Reports API v1", description = "Agent reporting endpoints with backward compatibility")
+public class AgentReportApiV1Controller {
 
     private final AuthService authService;
     private final AgentReportService reportService;

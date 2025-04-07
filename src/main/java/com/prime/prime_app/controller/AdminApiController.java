@@ -31,14 +31,14 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * This controller is created to handle the /api/v1/api/admin/* URL pattern
- * for backward compatibility with existing clients.
+ * This controller handles the /api/v1/admin/* URL pattern for backward compatibility.
+ * Only endpoints with explicit v1 versioning belong here.
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/api/admin")
+@RequestMapping("/api/v1/admin")
 @RequiredArgsConstructor
-@Tag(name = "Admin API V1", description = "Admin API v1 endpoints for backwards compatibility")
+@Tag(name = "Admin API v1", description = "Admin API endpoints with backward compatibility")
 public class AdminApiController {
 
     private final AuthService authService;

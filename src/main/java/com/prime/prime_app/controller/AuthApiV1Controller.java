@@ -2,8 +2,8 @@ package com.prime.prime_app.controller;
 
 import com.prime.prime_app.dto.auth.AuthRequest;
 import com.prime.prime_app.dto.auth.AuthResponse;
-import com.prime.prime_app.dto.auth.LoginHelpRequest;
 import com.prime.prime_app.dto.auth.ForgotPasswordRequest;
+import com.prime.prime_app.dto.auth.LoginHelpRequest;
 import com.prime.prime_app.dto.common.MessageResponse;
 import com.prime.prime_app.entities.User;
 import com.prime.prime_app.service.AuthService;
@@ -17,16 +17,16 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Collections;
-import java.util.Set;
-import java.util.stream.Collectors;
-
+/**
+ * This controller handles the /api/v1/auth/* URL pattern for backward compatibility.
+ * Only endpoints with explicit v1 versioning belong here.
+ */
 @Slf4j
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
-@Tag(name = "Authentication", description = "Authentication management APIs")
-public class AuthController {
+@Tag(name = "Authentication API v1", description = "Authentication management APIs with backward compatibility")
+public class AuthApiV1Controller {
 
     private final AuthService authService;
     private final NotificationService notificationService;
@@ -171,4 +171,4 @@ public class AuthController {
                     .build());
         }
     }
-}
+} 

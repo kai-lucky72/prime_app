@@ -309,28 +309,6 @@ public class ManagerController {
     }
     
     @Operation(
-        summary = "Add comment for agent",
-        description = "Add or update a daily comment for an agent"
-    )
-    @PostMapping("/agents/{agentId}/comment")
-    @PreAuthorize("hasRole('ROLE_MANAGER')")
-    public ResponseEntity<AgentCommentResponse> addAgentComment(
-            @PathVariable Long agentId,
-            @Valid @RequestBody AgentCommentRequest request) {
-        try {
-            User currentUser = authService.getCurrentUser();
-            log.debug("Manager {} adding comment for agent {}", currentUser.getEmail(), agentId);
-            
-            AgentCommentResponse response = agentCommentService.addOrUpdateComment(currentUser, agentId, request);
-            
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            log.error("Error adding agent comment: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().build();
-        }
-    }
-    
-    @Operation(
         summary = "Get comment for agent",
         description = "Get the daily comment for an agent on a specific date"
     )
@@ -376,26 +354,6 @@ public class ManagerController {
             return ResponseEntity.ok(comments);
         } catch (Exception e) {
             log.error("Error getting agent comments: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().build();
-        }
-    }
-    
-    @Operation(
-        summary = "Delete agent comment",
-        description = "Delete a daily comment for an agent"
-    )
-    @DeleteMapping("/agents/comments/{commentId}")
-    @PreAuthorize("hasRole('ROLE_MANAGER')")
-    public ResponseEntity<Void> deleteAgentComment(@PathVariable Long commentId) {
-        try {
-            User currentUser = authService.getCurrentUser();
-            log.debug("Manager {} deleting comment {}", currentUser.getEmail(), commentId);
-            
-            agentCommentService.deleteComment(commentId);
-            
-            return ResponseEntity.noContent().build();
-        } catch (Exception e) {
-            log.error("Error deleting agent comment: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().build();
         }
     }
