@@ -2,6 +2,7 @@ package com.prime.prime_app.controller;
 
 import com.prime.prime_app.dto.manager.*;
 import com.prime.prime_app.entities.User;
+import com.prime.prime_app.entities.Client;
 import com.prime.prime_app.service.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -18,7 +19,11 @@ import org.springframework.web.bind.annotation.*;
 import java.io.ByteArrayInputStream;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.TemporalAdjusters;
+import java.time.DayOfWeek;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 @Slf4j
 @RestController
@@ -160,38 +165,108 @@ public class ManagerController {
         User currentUser = authService.getCurrentUser();
         log.debug("Manager {} requesting reports", currentUser.getEmail());
         
-        LocalDate startDate = LocalDate.parse(request.getStartDate());
-        LocalDate endDate = LocalDate.parse(request.getEndDate());
+        ReportsResponse response = managerService.generateReports(currentUser, request.getPeriod());
         
-        List<ReportsResponse.AgentReportDto> agentReports = managerService.generateReports(
-            currentUser.getId(), 
-            startDate.atStartOfDay(), 
-            endDate.atTime(23, 59, 59)
-        );
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(
+        summary = "Get daily client counts for agents",
+        description = "Get detailed breakdown of clients by day for all agents under the manager"
+    )
+    @GetMapping("/reports/clients")
+    @PreAuthorize("hasRole('ROLE_MANAGER')")
+    public ResponseEntity<Map<String, Map<String, Integer>>> getAgentClientsBreakdown(
+            @Valid @RequestBody ReportsRequest request) {
+        User currentUser = authService.getCurrentUser();
+        log.debug("Manager {} requesting daily clients breakdown", currentUser.getEmail());
         
-        return ResponseEntity.ok(ReportsResponse.builder()
-                .agentReports(agentReports)
-                .build());
+        ReportsResponse response = managerService.generateReports(currentUser, request.getPeriod());
+        
+        Map<String, Map<String, Integer>> result = new HashMap<>();
+        response.getAgentReports().forEach(agent -> {
+            result.put(agent.getAgentName(), agent.getDailyClientsCount());
+        });
+        
+        return ResponseEntity.ok(result);
+    }
+
+    @Operation(
+        summary = "Get sectors breakdown for agents",
+        description = "Get detailed breakdown of sectors worked in by day for all agents under the manager"
+    )
+    @GetMapping("/reports/sectors")
+    @PreAuthorize("hasRole('ROLE_MANAGER')")
+    public ResponseEntity<Map<String, Map<String, List<String>>>> getAgentSectorsBreakdown(
+            @Valid @RequestBody ReportsRequest request) {
+        User currentUser = authService.getCurrentUser();
+        log.debug("Manager {} requesting sectors breakdown", currentUser.getEmail());
+        
+        ReportsResponse response = managerService.generateReports(currentUser, request.getPeriod());
+        
+        Map<String, Map<String, List<String>>> result = new HashMap<>();
+        response.getAgentReports().forEach(agent -> {
+            result.put(agent.getAgentName(), agent.getDailySectors());
+        });
+        
+        return ResponseEntity.ok(result);
+    }
+
+    @Operation(
+        summary = "Get work status breakdown for agents",
+        description = "Get detailed breakdown of work status by day for all agents under the manager"
+    )
+    @GetMapping("/reports/work-status")
+    @PreAuthorize("hasRole('ROLE_MANAGER')")
+    public ResponseEntity<Map<String, Map<String, String>>> getAgentWorkStatusBreakdown(
+            @Valid @RequestBody ReportsRequest request) {
+        User currentUser = authService.getCurrentUser();
+        log.debug("Manager {} requesting work status breakdown", currentUser.getEmail());
+        
+        ReportsResponse response = managerService.generateReports(currentUser, request.getPeriod());
+        
+        Map<String, Map<String, String>> result = new HashMap<>();
+        response.getAgentReports().forEach(agent -> {
+            result.put(agent.getAgentName(), agent.getWorkStatus());
+        });
+        
+        return ResponseEntity.ok(result);
     }
 
     @Operation(
         summary = "Export client data",
-        description = "Export client data as Excel or PDF for the specified date range"
+        description = "Export client data as Excel or PDF for the specified period"
     )
     @GetMapping("/reports/export")
     @PreAuthorize("hasRole('ROLE_MANAGER')")
     public ResponseEntity<InputStreamResource> exportReports(
-            @RequestParam String startDate,
-            @RequestParam String endDate,
+            @RequestParam ReportsRequest.Period period,
             @RequestParam(defaultValue = "pdf") String format) {
         
         User currentUser = authService.getCurrentUser();
         log.debug("Manager {} exporting reports in {} format", currentUser.getEmail(), format);
 
-        LocalDateTime start = LocalDate.parse(startDate).atStartOfDay();
-        LocalDateTime end = LocalDate.parse(endDate).atTime(23, 59, 59);
+        LocalDate endDate = LocalDate.now();
+        LocalDate startDate;
+        
+        switch (period) {
+            case DAILY:
+                startDate = endDate;
+                break;
+            case WEEKLY:
+                startDate = endDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+                break;
+            case MONTHLY:
+                startDate = endDate.withDayOfMonth(1);
+                break;
+            default:
+                throw new IllegalArgumentException("Invalid period");
+        }
 
-        var clients = managerService.getClientsForExport(currentUser.getId(), start, end);
+        LocalDateTime start = startDate.atStartOfDay();
+        LocalDateTime end = endDate.atTime(23, 59, 59);
+
+        List<Client> clients = managerService.getClientsForExport(currentUser, start, end);
         
         HttpHeaders headers = new HttpHeaders();
         ByteArrayInputStream fileStream;

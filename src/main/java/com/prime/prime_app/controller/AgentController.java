@@ -26,6 +26,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -119,17 +120,56 @@ public class AgentController {
         User currentUser = authService.getCurrentUser();
         log.debug("Performance report requested by agent: {}", currentUser.getEmail());
         
-        // Parse dates
-        LocalDate startDate = LocalDate.parse(request.getStart_date());
-        LocalDate endDate = LocalDate.parse(request.getEnd_date());
+        PerformanceReportResponse response = agentService.getPerformanceReport(currentUser, request);
         
-        // In a real implementation, this would fetch data from the database
-        // For now, we'll just create a dummy response
+        return ResponseEntity.ok(response);
+    }
+    
+    @Operation(
+        summary = "Get daily clients breakdown",
+        description = "Get detailed breakdown of clients by day for the specified period"
+    )
+    @GetMapping("/performance/clients")
+    @PreAuthorize("hasRole('ROLE_AGENT')")
+    public ResponseEntity<Map<String, Integer>> getDailyClientsBreakdown(
+            @Valid @RequestBody PerformanceReportRequest request) {
+        User currentUser = authService.getCurrentUser();
+        log.debug("Daily clients breakdown requested by agent: {}", currentUser.getEmail());
         
-        return ResponseEntity.ok(PerformanceReportResponse.builder()
-                .total_clients_engaged(10)
-                .sectors_worked_in(Arrays.asList("Health", "Education"))
-                .days_worked(15)
-                .build());
+        PerformanceReportResponse response = agentService.getPerformanceReport(currentUser, request);
+        
+        return ResponseEntity.ok(response.getDaily_clients_count());
+    }
+    
+    @Operation(
+        summary = "Get sectors breakdown",
+        description = "Get detailed breakdown of sectors worked in by day for the specified period"
+    )
+    @GetMapping("/performance/sectors")
+    @PreAuthorize("hasRole('ROLE_AGENT')")
+    public ResponseEntity<Map<String, List<String>>> getSectorsBreakdown(
+            @Valid @RequestBody PerformanceReportRequest request) {
+        User currentUser = authService.getCurrentUser();
+        log.debug("Sectors breakdown requested by agent: {}", currentUser.getEmail());
+        
+        PerformanceReportResponse response = agentService.getPerformanceReport(currentUser, request);
+        
+        return ResponseEntity.ok(response.getDaily_sectors());
+    }
+    
+    @Operation(
+        summary = "Get work status breakdown",
+        description = "Get detailed breakdown of work status by day for the specified period"
+    )
+    @GetMapping("/performance/work-status")
+    @PreAuthorize("hasRole('ROLE_AGENT')")
+    public ResponseEntity<Map<String, String>> getWorkStatusBreakdown(
+            @Valid @RequestBody PerformanceReportRequest request) {
+        User currentUser = authService.getCurrentUser();
+        log.debug("Work status breakdown requested by agent: {}", currentUser.getEmail());
+        
+        PerformanceReportResponse response = agentService.getPerformanceReport(currentUser, request);
+        
+        return ResponseEntity.ok(response.getWork_status());
     }
 } 

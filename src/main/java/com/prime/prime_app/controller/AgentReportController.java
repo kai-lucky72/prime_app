@@ -2,8 +2,11 @@ package com.prime.prime_app.controller;
 
 import com.prime.prime_app.dto.agent.DailyReportRequest;
 import com.prime.prime_app.dto.agent.DailyReportResponse;
+import com.prime.prime_app.dto.agent.PerformanceReportRequest;
+import com.prime.prime_app.dto.agent.PerformanceReportResponse;
 import com.prime.prime_app.entities.User;
 import com.prime.prime_app.service.AgentReportService;
+import com.prime.prime_app.service.AgentService;
 import com.prime.prime_app.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -17,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -27,6 +31,7 @@ public class AgentReportController {
 
     private final AuthService authService;
     private final AgentReportService reportService;
+    private final AgentService agentService;
 
     @Operation(
         summary = "Generate daily report",
@@ -87,5 +92,69 @@ public class AgentReportController {
         List<DailyReportResponse> reports = reportService.getAllReports(currentUser);
         
         return ResponseEntity.ok(reports);
+    }
+    
+    @Operation(
+        summary = "Get performance analytics",
+        description = "Get performance analytics for the agent based on the specified period"
+    )
+    @GetMapping("/performance")
+    @PreAuthorize("hasRole('ROLE_AGENT')")
+    public ResponseEntity<PerformanceReportResponse> getPerformanceAnalytics(
+            @Valid @RequestBody PerformanceReportRequest request) {
+        User currentUser = authService.getCurrentUser();
+        log.debug("Performance analytics requested by agent: {}", currentUser.getEmail());
+        
+        PerformanceReportResponse response = agentService.getPerformanceReport(currentUser, request);
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    @Operation(
+        summary = "Get clients breakdown",
+        description = "Get detailed breakdown of clients by day for the specified period"
+    )
+    @GetMapping("/performance/clients")
+    @PreAuthorize("hasRole('ROLE_AGENT')")
+    public ResponseEntity<Map<String, Integer>> getClientsBreakdown(
+            @Valid @RequestBody PerformanceReportRequest request) {
+        User currentUser = authService.getCurrentUser();
+        log.debug("Clients breakdown requested by agent: {}", currentUser.getEmail());
+        
+        PerformanceReportResponse response = agentService.getPerformanceReport(currentUser, request);
+        
+        return ResponseEntity.ok(response.getDaily_clients_count());
+    }
+    
+    @Operation(
+        summary = "Get sectors breakdown",
+        description = "Get detailed breakdown of sectors worked in by day for the specified period"
+    )
+    @GetMapping("/performance/sectors")
+    @PreAuthorize("hasRole('ROLE_AGENT')")
+    public ResponseEntity<Map<String, List<String>>> getSectorsBreakdown(
+            @Valid @RequestBody PerformanceReportRequest request) {
+        User currentUser = authService.getCurrentUser();
+        log.debug("Sectors breakdown requested by agent: {}", currentUser.getEmail());
+        
+        PerformanceReportResponse response = agentService.getPerformanceReport(currentUser, request);
+        
+        return ResponseEntity.ok(response.getDaily_sectors());
+    }
+    
+    @Operation(
+        summary = "Get work status breakdown",
+        description = "Get detailed breakdown of work status by day for the specified period"
+    )
+    @GetMapping("/performance/work-status")
+    @PreAuthorize("hasRole('ROLE_AGENT')")
+    public ResponseEntity<Map<String, String>> getWorkStatusBreakdown(
+            @Valid @RequestBody PerformanceReportRequest request) {
+        User currentUser = authService.getCurrentUser();
+        log.debug("Work status breakdown requested by agent: {}", currentUser.getEmail());
+        
+        PerformanceReportResponse response = agentService.getPerformanceReport(currentUser, request);
+        
+        return ResponseEntity.ok(response.getWork_status());
     }
 } 

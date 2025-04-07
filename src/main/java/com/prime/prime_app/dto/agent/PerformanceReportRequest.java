@@ -1,6 +1,6 @@
 package com.prime.prime_app.dto.agent;
 
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,9 +11,12 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class PerformanceReportRequest {
-    @NotBlank(message = "Start date is required")
-    private String start_date;
+    public enum Period {
+        DAILY,
+        WEEKLY,
+        MONTHLY
+    }
     
-    @NotBlank(message = "End date is required")
-    private String end_date;
+    @NotNull(message = "Period is required")
+    private Period period;
 } 

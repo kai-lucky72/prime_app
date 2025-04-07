@@ -1,6 +1,7 @@
 package com.prime.prime_app.dto.manager;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -14,18 +15,12 @@ public class ReportsRequest {
     @NotBlank(message = "Manager ID is required")
     private String manager_id;
     
-    @NotBlank(message = "Start date is required")
-    private String start_date;
-    
-    @NotBlank(message = "End date is required")
-    private String end_date;
-    
-    // Accessor methods for snake_case fields
-    public String getStartDate() {
-        return start_date;
+    public enum Period {
+        DAILY,
+        WEEKLY,
+        MONTHLY
     }
     
-    public String getEndDate() {
-        return end_date;
-    }
+    @NotNull(message = "Period is required")
+    private Period period;
 } 
