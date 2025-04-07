@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -28,5 +29,32 @@ public class UserService {
         
         // Save the changes
         userRepository.save(user);
+    }
+    
+    /**
+     * Update a user's profile image URL
+     * 
+     * @param user The user to update
+     * @param imageUrl The new profile image URL
+     * @return The updated user
+     */
+    @Transactional
+    public User updateProfileImage(User user, String imageUrl) {
+        user.setProfileImageUrl(imageUrl);
+        user.setUpdatedAt(LocalDateTime.now());
+        return userRepository.save(user);
+    }
+    
+    /**
+     * Remove a user's profile image
+     * 
+     * @param user The user to update
+     * @return The updated user
+     */
+    @Transactional
+    public User removeProfileImage(User user) {
+        user.setProfileImageUrl(null);
+        user.setUpdatedAt(LocalDateTime.now());
+        return userRepository.save(user);
     }
 } 

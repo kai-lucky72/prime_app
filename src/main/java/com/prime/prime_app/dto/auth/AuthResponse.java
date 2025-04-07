@@ -18,6 +18,7 @@ public class AuthResponse {
     private String firstName;
     private String lastName;
     private String role;
+    private String profileImageUrl;
     private String message;
     
     @Builder.Default
@@ -43,6 +44,33 @@ public class AuthResponse {
                 .firstName(firstName)
                 .lastName(lastName)
                 .role(role)
+                .profileImageUrl(null)
+                .message(message)
+                .build();
+    }
+
+    public static AuthResponse of(
+            String token,
+            String refreshToken,
+            Long expiresIn,
+            String workId,
+            String email,
+            String firstName,
+            String lastName,
+            String role,
+            String profileImageUrl,
+            String message
+    ) {
+        return AuthResponse.builder()
+                .token(token)
+                .refreshToken(refreshToken)
+                .expiresIn(expiresIn)
+                .workId(workId)
+                .email(email)
+                .firstName(firstName)
+                .lastName(lastName)
+                .role(role)
+                .profileImageUrl(profileImageUrl)
                 .message(message)
                 .build();
     }

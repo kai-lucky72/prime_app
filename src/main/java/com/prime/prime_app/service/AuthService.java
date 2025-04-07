@@ -39,75 +39,51 @@ public class AuthService {
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     public AuthResponse authenticate(AuthRequest request) {
-        // Find user by workId first - primary identifier
-        User user = userRepository.findByWorkId(request.getWorkId())
-                .orElseThrow(() -> new EntityNotFoundException("Invalid credentials: Work ID not found"));
-
-        // Verify email matches
-        if (!user.getEmail().equals(request.getEmail())) {
-            throw new EntityNotFoundException("Invalid credentials: Email does not match Work ID");
-        }
-        
-        // Password validation logic:
-        // 1. If user has no password set -> allow login without password (first login scenario)
-        // 2. If user has password set but no password provided -> reject login
-        // 3. If user has password set and password provided -> validate password
-        if (user.getPassword() != null && StringUtils.hasText(user.getPassword())) {
-            // User has a password set, so password is required
-            if (!StringUtils.hasText(request.getPassword())) {
-                throw new EntityNotFoundException("Password is required for this account");
+        try {
+            // Authenticate user
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getWorkId(), request.getPassword())
+            );
+            
+            // Set security context
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            
+            // Get user details
+            User user = this.getCurrentUser();
+            if (user == null) {
+                throw new IllegalStateException("User not found after authentication");
             }
             
-            // Verify password
-            if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-                throw new EntityNotFoundException("Invalid credentials: Password incorrect");
+            // Update last login time
+            user.setLastLogin(LocalDateTime.now());
+            user.setLoginAttempts(0); // Reset login attempts
+            userRepository.save(user);
+            
+            // Generate JWT token
+            String token = jwtUtils.generateToken(user);
+            String refreshToken = jwtUtils.generateRefreshToken(user);
+            
+            String message = "Authentication successful";
+            if (user.getPassword() == null) {
+                message += ". Note: No password is set for this account. Please set a password in your profile settings.";
             }
-        } else {
-            // No password set for user - this is allowed for first login
-            log.info("User {} logged in without password (first login or no password set)", user.getEmail());
+            
+            return AuthResponse.of(
+                    token,
+                    refreshToken,
+                    jwtUtils.getExpirationTime(),
+                    user.getWorkId(),
+                    user.getEmail(),
+                    user.getFirstName(),
+                    user.getLastName(),
+                    user.getRole() != null ? user.getRole().getName().name() : "",
+                    user.getProfileImageUrl(),
+                    message
+            );
+        } catch (Exception e) {
+            log.error("Error authenticating user: {}", e.getMessage());
+            throw new RuntimeException("Error authenticating user", e);
         }
-        
-        // Create authentication token with authorities based on user role
-        Authentication authentication = new UsernamePasswordAuthenticationToken(
-                user,
-                null,
-                user.getAuthorities()
-        );
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-
-        // Update last login time
-        user.setLastLogin(LocalDateTime.now());
-        userRepository.save(user);
-
-        String accessToken = jwtUtils.generateToken(user);
-        String refreshToken = jwtUtils.generateRefreshToken(user);
-        
-        // Get token ID and store it for single device login
-        String tokenId = jwtUtils.extractTokenId(accessToken);
-        long expirationMs = user.getRole() != null && user.getRole().getName() == Role.RoleType.ROLE_ADMIN
-                ? jwtUtils.getAdminJwtExpirationMs() : jwtUtils.getJwtExpirationMs();
-        userTokenService.storeUserToken(user, tokenId, expirationMs);
-
-        // Determine user role for proper redirection
-        String userRole = determineUserRole(user);
-        
-        // Add extra information to response if no password is set
-        String message = "Authentication successful as " + userRole;
-        if (user.getPassword() == null || !StringUtils.hasText(user.getPassword())) {
-            message += ". Note: No password is set for this account. Please set a password in your profile settings.";
-        }
-
-        return AuthResponse.of(
-                accessToken,
-                refreshToken,
-                (long) expirationMs,
-                user.getWorkId(),
-                user.getEmail(),
-                user.getFirstName(),
-                user.getLastName(),
-                user.getRole() != null ? user.getRole().getName().name() : "",
-                message
-        );
     }
     
     private String determineUserRole(User user) {

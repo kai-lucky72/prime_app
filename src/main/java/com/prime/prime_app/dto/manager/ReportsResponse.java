@@ -22,5 +22,6 @@ public class ReportsResponse {
         private int totalClientsEngaged;
         private List<String> sectorsWorkedIn;
         private int daysWorked;
+        private String dailyComment;
     }
 } 

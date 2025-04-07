@@ -52,4 +52,7 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
     
     @Query("SELECT DISTINCT c.insuranceType FROM Client c WHERE c.agent = ?1 AND c.timeOfInteraction BETWEEN ?2 AND ?3")
     List<String> findInsuranceTypesByAgentAndTimeRange(User agent, LocalDateTime startTime, LocalDateTime endTime);
+    
+    @Query("SELECT c FROM Client c WHERE c.agent = ?1 AND c.timeOfInteraction BETWEEN ?2 AND ?3")
+    List<Client> findByAgentAndDateBetween(User agent, LocalDateTime startDate, LocalDateTime endDate);
 }

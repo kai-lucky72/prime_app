@@ -49,6 +49,14 @@ public class JwtUtils {
         return adminJwtExpirationMs;
     }
 
+    /**
+     * Get the token expiration time in milliseconds
+     * @return The token expiration time
+     */
+    public Long getExpirationTime() {
+        return jwtExpirationMs;
+    }
+
     public String extractUsername(String token) {
         try {
             return extractClaim(token, Claims::getSubject);

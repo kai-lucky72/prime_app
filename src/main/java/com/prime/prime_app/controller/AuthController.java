@@ -139,6 +139,7 @@ public class AuthController {
                 user.getFirstName(),
                 user.getLastName(),
                 user.getRole() != null ? user.getRole().getName().name() : "",
+                user.getProfileImageUrl(),
                 "Current user details"
         ));
     }
