@@ -1,0 +1,222 @@
+HELP.md
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+.idea/
+.idea_modules/
+out/
+.run/
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+.code-workspace
+.history/
+
+### Eclipse ###
+.metadata
+bin/
+tmp/
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
+
+### Java ###
+# Compiled class files
+*.class
+
+# Log files
+*.log
+logs/
+log/
+/log
+/logs
+
+# BlueJ files
+*.ctxt
+
+# Mobile Tools for Java (J2ME)
+.mtj.tmp/
+
+# Package Files #
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+hs_err_pid*
+replay_pid*
+
+### Maven ###
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+# https://github.com/takari/maven-wrapper#usage-without-binary-jar
+.mvn/wrapper/maven-wrapper.jar
+!.mvn/wrapper/maven-wrapper.properties
+
+### Spring Boot ###
+*#
+*.sw?
+*~
+.#*
+.*.md.html
+.DS_Store
+.attach_pid*
+.gradle
+.metadata
+.recommenders
+/code
+MANIFEST.MF
+_site/
+activemq-data
+bin
+out
+spring-*.zip
+applicationinsights-agent-*.jar
+.flattened-pom.xml
+secrets.yml
+.gradletasknamecache
+
+### Database files ###
+*.db
+*.sqlite
+*.db-journal
+*.accdb
+*.mdb
+
+### Redis ###
+*.rdb
+*.aof
+appendonly.aof
+dump.rdb
+nodes.conf
+
+### Node (for frontend integration) ###
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+.pnpm-debug.log
+/.pnp
+.pnp.js
+/coverage
+/build
+.eslintcache
+.parcel-cache/
+
+### OS generated files ###
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+.directory
+
+### Application Properties with sensitive data ###
+/src/main/resources/application-local.properties
+/src/main/resources/application-dev.properties
+/src/main/resources/application-prod.properties
+# Keep the main application.properties
+!/src/main/resources/application.properties
+
+### Environment variables ###
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+
+### Docker ###
+Dockerfile.local
+docker-compose.override.yml
+.dockerignore
+
+### Test Coverage ###
+coverage/
+.coverage
+*.lcov
+.nyc_output
+htmlcov/
+.tox/
+.nox/
+junit-*.properties
+.hypothesis/
+.pytest_cache/
+
+### CI/CD ###
+.github/.DS_Store
+.circleci/
+cloudbuild.yaml
+
+### Misc ###
+backup/
+temp/
+tmp/
+*.bak
+*.swp
+*~
+.temp
+.tmp
+.vscode/launch.json
+.vscode/tasks.json
+settings.json
+.direnv/
+*.orig
+*.rej
+*.pid
+*.seed
+*.pid.lock
+
+### Application specific ###
+data/
+dev-config/
+
+# Compiled frontend assets
+/src/main/resources/static/
+/src/main/resources/public/
+
+# Generated API models
+/src/main/resources/schema/
