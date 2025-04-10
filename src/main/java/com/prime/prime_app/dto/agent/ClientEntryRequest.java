@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class ClientEntryRequest {
     @NotBlank(message = "Name is required")
-    @Pattern(regexp = "^[a-zA-Z\\s]{2,100}$", message = "Name must contain only letters and spaces, between 2-100 characters")
+    @Pattern(regexp = "^[a-zA-Z0-9\\s\\-\\.]{2,100}$", message = "Name must contain letters, numbers, spaces, hyphens or periods, between 2-100 characters")
     private String name;
     
     @NotBlank(message = "National ID is required")
@@ -30,4 +30,6 @@ public class ClientEntryRequest {
     @NotBlank(message = "Location of client is required")
     @Size(min = 2, max = 100, message = "Location must be between 2-100 characters")
     private String locationOfClient;
+    
+    private String date_of_birth;
 } 

@@ -88,28 +88,31 @@ public class AgentController {
         try {
             User currentUser = authService.getCurrentUser();
             log.debug("Client interaction request from agent: {}", currentUser.getEmail());
-            
+
             ClientEntryResponse response = agentService.logClientInteraction(currentUser, request);
-            
+
             if (response.getStatus().startsWith("Error:")) {
-                // Return 400 Bad Request for validation errors
                 return ResponseEntity.badRequest().body(response);
             }
-            
+
             log.info("Client interaction successfully logged by agent: {}", currentUser.getEmail());
             return ResponseEntity.ok(response);
+        } catch (IllegalStateException e) {
+            log.warn("Validation error logging client interaction: {}", e.getMessage());
+            ClientEntryResponse errorResponse = ClientEntryResponse.builder()
+                    .status("Error: " + e.getMessage())
+                    .timeOfInteraction(LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME))
+                    .build();
+            return ResponseEntity.badRequest().body(errorResponse);
         } catch (Exception e) {
             log.error("Unexpected error logging client interaction: {}", e.getMessage(), e);
-            
             ClientEntryResponse errorResponse = ClientEntryResponse.builder()
-                .status("Error: " + e.getMessage())
-                .timeOfInteraction(LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME))
-                .build();
-                
+                    .status("Error: Failed to log client interaction. Please try again later.")
+                    .timeOfInteraction(LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME))
+                    .build();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
     }
-
     @Operation(
         summary = "Get performance report",
         description = "Get performance reports for the agent (daily, weekly, monthly)"
