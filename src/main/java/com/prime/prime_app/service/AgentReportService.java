@@ -45,12 +45,9 @@ public class AgentReportService {
             return mapToResponse(report, "Report already generated for today");
         }
         
-        // Get all clients for today
-        List<Client> todaysClients = clientRepository.findByAgentAndDateBetween(
-                agent, 
-                today.atStartOfDay(), 
-                today.plusDays(1).atStartOfDay()
-        );
+        // Get all clients for today - FIXED: Instead of only getting today's clients, get all clients 
+        // associated with this agent to ensure we have data for the report
+        List<Client> clientsForReport = clientRepository.findByAgent(agent);
         
         // Create report entity (without PDF path for now)
         AgentDailyReport report = AgentDailyReport.builder()
@@ -60,10 +57,10 @@ public class AgentReportService {
 
         // If there are clients, generate PDF
         String pdfPath = null;
-        if (!todaysClients.isEmpty()) {
+        if (!clientsForReport.isEmpty()) {
             try {
                 // Generate PDF and save it
-                ByteArrayInputStream pdfStream = reportExportService.exportClientsToPdf(todaysClients);
+                ByteArrayInputStream pdfStream = reportExportService.exportClientsToPdf(clientsForReport);
                 String filename = String.format("%s_%s_Client_Report.pdf", 
                         agent.getWorkId(), 
                         today.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
@@ -71,7 +68,7 @@ public class AgentReportService {
                 pdfPath = fileStorageService.storePdfReport(pdfStream, filename);
                 report.setPdfPath(pdfPath);
             } catch (Exception e) {
-                log.error("Error generating PDF for agent {}: {}", agent.getWorkId(), e.getMessage());
+                log.error("Error generating PDF for agent {}: {}", agent.getWorkId(), e.getMessage(), e);
                 // Continue without PDF - we will still create a report entry
             }
         }
@@ -80,7 +77,7 @@ public class AgentReportService {
         report = reportRepository.save(report);
         
         return mapToResponse(report, "Report generated successfully" + 
-                (pdfPath == null ? " (no clients recorded today)" : ""));
+                (pdfPath == null ? " (no clients found)" : ""));
     }
     
     /**
@@ -102,6 +99,32 @@ public class AgentReportService {
         
         // Set comment
         report.setDailyComment(request.getComment());
+        
+        // If report doesn't have a PDF and wasn't just created, try to generate one
+        if (report.getPdfPath() == null) {
+            // Get all clients for this agent
+            List<Client> clientsForReport = clientRepository.findByAgent(agent);
+            
+            // If there are clients, generate PDF
+            if (!clientsForReport.isEmpty()) {
+                try {
+                    // Generate PDF and save it
+                    ByteArrayInputStream pdfStream = reportExportService.exportClientsToPdf(clientsForReport);
+                    String filename = String.format("%s_%s_Client_Report.pdf", 
+                            agent.getWorkId(), 
+                            today.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+                    
+                    String pdfPath = fileStorageService.storePdfReport(pdfStream, filename);
+                    report.setPdfPath(pdfPath);
+                    log.info("Generated PDF during report submission for agent {}", agent.getWorkId());
+                } catch (Exception e) {
+                    log.error("Error generating PDF during report submission for agent {}: {}", agent.getWorkId(), e.getMessage(), e);
+                    // Continue without PDF - we will still create a report entry
+                }
+            }
+        }
+        
+        // Save report
         report = reportRepository.save(report);
         
         return mapToResponse(report, "Report submitted successfully");

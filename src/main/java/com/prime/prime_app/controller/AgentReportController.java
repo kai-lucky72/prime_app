@@ -14,6 +14,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -40,12 +41,20 @@ public class AgentReportController {
     @PostMapping("/generate")
     @PreAuthorize("hasRole('ROLE_AGENT')")
     public ResponseEntity<DailyReportResponse> generateDailyReport() {
-        User currentUser = authService.getCurrentUser();
-        log.debug("Daily report generation request from agent: {}", currentUser.getEmail());
-        
-        DailyReportResponse response = reportService.generateDailyReport(currentUser);
-        
-        return ResponseEntity.ok(response);
+        try {
+            User currentUser = authService.getCurrentUser();
+            log.debug("Daily report generation request from agent: {}", currentUser.getEmail());
+            
+            DailyReportResponse response = reportService.generateDailyReport(currentUser);
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error generating daily report: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(DailyReportResponse.builder()
+                    .message("Error generating report: " + e.getMessage())
+                    .build());
+        }
     }
 
     @Operation(
@@ -55,12 +64,20 @@ public class AgentReportController {
     @PostMapping("/submit")
     @PreAuthorize("hasRole('ROLE_AGENT')")
     public ResponseEntity<DailyReportResponse> submitDailyReport(@Valid @RequestBody DailyReportRequest request) {
-        User currentUser = authService.getCurrentUser();
-        log.debug("Daily report submission from agent: {}", currentUser.getEmail());
-        
-        DailyReportResponse response = reportService.submitDailyReport(currentUser, request);
-        
-        return ResponseEntity.ok(response);
+        try {
+            User currentUser = authService.getCurrentUser();
+            log.debug("Daily report submission from agent: {}", currentUser.getEmail());
+            
+            DailyReportResponse response = reportService.submitDailyReport(currentUser, request);
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error submitting daily report: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(DailyReportResponse.builder()
+                    .message("Error submitting report: " + e.getMessage())
+                    .build());
+        }
     }
 
     @Operation(
@@ -101,11 +118,11 @@ public class AgentReportController {
     @GetMapping("/performance")
     @PreAuthorize("hasRole('ROLE_AGENT')")
     public ResponseEntity<PerformanceReportResponse> getPerformanceAnalytics(
-            @Valid @RequestBody PerformanceReportRequest request) {
+            @RequestParam("period") String period) {
         User currentUser = authService.getCurrentUser();
         log.debug("Performance analytics requested by agent: {}", currentUser.getEmail());
         
-        PerformanceReportResponse response = agentService.getPerformanceReport(currentUser, request);
+        PerformanceReportResponse response = agentService.getPerformanceReport(currentUser, period);
         
         return ResponseEntity.ok(response);
     }
@@ -117,11 +134,11 @@ public class AgentReportController {
     @GetMapping("/performance/clients")
     @PreAuthorize("hasRole('ROLE_AGENT')")
     public ResponseEntity<Map<String, Integer>> getClientsBreakdown(
-            @Valid @RequestBody PerformanceReportRequest request) {
+        @RequestParam("period") String period) {
         User currentUser = authService.getCurrentUser();
         log.debug("Clients breakdown requested by agent: {}", currentUser.getEmail());
         
-        PerformanceReportResponse response = agentService.getPerformanceReport(currentUser, request);
+        PerformanceReportResponse response = agentService.getPerformanceReport(currentUser, period);
         
         return ResponseEntity.ok(response.getDaily_clients_count());
     }
@@ -133,11 +150,11 @@ public class AgentReportController {
     @GetMapping("/performance/sectors")
     @PreAuthorize("hasRole('ROLE_AGENT')")
     public ResponseEntity<Map<String, List<String>>> getSectorsBreakdown(
-            @Valid @RequestBody PerformanceReportRequest request) {
+            @RequestParam("period") String period) {
         User currentUser = authService.getCurrentUser();
         log.debug("Sectors breakdown requested by agent: {}", currentUser.getEmail());
         
-        PerformanceReportResponse response = agentService.getPerformanceReport(currentUser, request);
+        PerformanceReportResponse response = agentService.getPerformanceReport(currentUser, period);
         
         return ResponseEntity.ok(response.getDaily_sectors());
     }
@@ -149,11 +166,11 @@ public class AgentReportController {
     @GetMapping("/performance/work-status")
     @PreAuthorize("hasRole('ROLE_AGENT')")
     public ResponseEntity<Map<String, String>> getWorkStatusBreakdown(
-            @Valid @RequestBody PerformanceReportRequest request) {
+        @RequestParam("period") String period) {
         User currentUser = authService.getCurrentUser();
         log.debug("Work status breakdown requested by agent: {}", currentUser.getEmail());
         
-        PerformanceReportResponse response = agentService.getPerformanceReport(currentUser, request);
+        PerformanceReportResponse response = agentService.getPerformanceReport(currentUser, period);
         
         return ResponseEntity.ok(response.getWork_status());
     }

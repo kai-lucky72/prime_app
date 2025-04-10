@@ -14,6 +14,7 @@ import com.prime.prime_app.service.ClientService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.ValidationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -49,7 +50,7 @@ public class AgentController {
     public ResponseEntity<AttendanceResponse> submitAttendance(@Valid @RequestBody AttendanceRequest request) {
         User currentUser = authService.getCurrentUser();
         log.debug("Attendance submission received for agent: {}", currentUser.getEmail());
-        
+
         // Check if attendance can be submitted at current time
         if (!attendanceService.canMarkAttendance()) {
             return ResponseEntity.badRequest().body(AttendanceResponse.builder()
@@ -57,11 +58,11 @@ public class AgentController {
                     .redirectTo("/dashboard")
                     .build());
         }
-        
+
         try {
             // Submit attendance
             attendanceService.markAttendance(currentUser.getId(), request.getLocation(), request.getSector());
-            
+
             // Return successful response with redirect to client entry
             return ResponseEntity.ok(AttendanceResponse.builder()
                     .status("Attendance submitted successfully")
@@ -114,65 +115,66 @@ public class AgentController {
         }
     }
     @Operation(
-        summary = "Get performance report",
-        description = "Get performance reports for the agent (daily, weekly, monthly)"
+            summary = "Get performance analytics",
+            description = "Get performance analytics for the agent based on the specified period"
     )
     @GetMapping("/performance")
     @PreAuthorize("hasRole('ROLE_AGENT')")
-    public ResponseEntity<PerformanceReportResponse> getPerformanceReport(@Valid @RequestBody PerformanceReportRequest request) {
+    public ResponseEntity<PerformanceReportResponse> getPerformanceAnalytics(
+            @RequestParam("period") String period) {
         User currentUser = authService.getCurrentUser();
-        log.debug("Performance report requested by agent: {}", currentUser.getEmail());
-        
-        PerformanceReportResponse response = agentService.getPerformanceReport(currentUser, request);
-        
+        log.debug("Performance analytics requested by agent: {}", currentUser.getEmail());
+
+        PerformanceReportResponse response = agentService.getPerformanceReport(currentUser, period);
+
         return ResponseEntity.ok(response);
     }
-    
+
     @Operation(
-        summary = "Get daily clients breakdown",
-        description = "Get detailed breakdown of clients by day for the specified period"
+            summary = "Get clients breakdown",
+            description = "Get detailed breakdown of clients by day for the specified period"
     )
     @GetMapping("/performance/clients")
     @PreAuthorize("hasRole('ROLE_AGENT')")
-    public ResponseEntity<Map<String, Integer>> getDailyClientsBreakdown(
-            @Valid @RequestBody PerformanceReportRequest request) {
+    public ResponseEntity<Map<String, Integer>> getClientsBreakdown(
+            @RequestParam("period") String period) {
         User currentUser = authService.getCurrentUser();
-        log.debug("Daily clients breakdown requested by agent: {}", currentUser.getEmail());
-        
-        PerformanceReportResponse response = agentService.getPerformanceReport(currentUser, request);
-        
+        log.debug("Clients breakdown requested by agent: {}", currentUser.getEmail());
+
+        PerformanceReportResponse response = agentService.getPerformanceReport(currentUser, period);
+
         return ResponseEntity.ok(response.getDaily_clients_count());
     }
-    
+
     @Operation(
-        summary = "Get sectors breakdown",
-        description = "Get detailed breakdown of sectors worked in by day for the specified period"
+            summary = "Get sectors breakdown",
+            description = "Get detailed breakdown of sectors worked in by day for the specified period"
     )
     @GetMapping("/performance/sectors")
     @PreAuthorize("hasRole('ROLE_AGENT')")
     public ResponseEntity<Map<String, List<String>>> getSectorsBreakdown(
-            @Valid @RequestBody PerformanceReportRequest request) {
+            @RequestParam("period") String period) {
         User currentUser = authService.getCurrentUser();
         log.debug("Sectors breakdown requested by agent: {}", currentUser.getEmail());
-        
-        PerformanceReportResponse response = agentService.getPerformanceReport(currentUser, request);
-        
+
+        PerformanceReportResponse response = agentService.getPerformanceReport(currentUser, period);
+
         return ResponseEntity.ok(response.getDaily_sectors());
     }
-    
+
     @Operation(
-        summary = "Get work status breakdown",
-        description = "Get detailed breakdown of work status by day for the specified period"
+            summary = "Get work status breakdown",
+            description = "Get detailed breakdown of work status by day for the specified period"
     )
     @GetMapping("/performance/work-status")
     @PreAuthorize("hasRole('ROLE_AGENT')")
     public ResponseEntity<Map<String, String>> getWorkStatusBreakdown(
-            @Valid @RequestBody PerformanceReportRequest request) {
+            @RequestParam("period") String period) {
         User currentUser = authService.getCurrentUser();
         log.debug("Work status breakdown requested by agent: {}", currentUser.getEmail());
-        
-        PerformanceReportResponse response = agentService.getPerformanceReport(currentUser, request);
-        
+
+        PerformanceReportResponse response = agentService.getPerformanceReport(currentUser, period);
+
         return ResponseEntity.ok(response.getWork_status());
     }
-} 
+}

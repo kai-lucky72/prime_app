@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.InsufficientAuthenticationException;
@@ -61,6 +62,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(errorResponse);
     }
 
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ResponseEntity<ErrorResponse> handleHttpMessageNotReadableException(HttpMessageNotReadableException ex, WebRequest request) {
+        log.warn("Request body error: {}", ex.getMessage());
+        return buildErrorResponse(new Exception("Required request body is missing or malformed. Please provide a valid JSON payload."), HttpStatus.BAD_REQUEST, request);
+    }
+
     @ExceptionHandler(ConstraintViolationException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ResponseEntity<ErrorResponse> handleConstraintViolationException(ConstraintViolationException ex, WebRequest request) {
@@ -83,7 +91,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ResponseEntity<ErrorResponse> handleSpecificAuthenticationException(AuthenticationException ex, WebRequest request) {
         log.error("Authentication exception: {}", ex.getMessage(), ex);
-        
+
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.UNAUTHORIZED.value())
@@ -91,7 +99,7 @@ public class GlobalExceptionHandler {
                 .message(ex.getMessage())
                 .path(request.getDescription(false))
                 .build();
-        
+
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
     }
 
@@ -99,21 +107,21 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ResponseEntity<ErrorResponse> handleInsufficientAuthenticationException(Exception ex, WebRequest request) {
         log.error("Authentication error: {}", ex.getMessage(), ex);
-        
+
         String message = "Authentication failed";
         if (ex instanceof BadCredentialsException) {
             message = "Invalid credentials provided";
         } else if (ex.getMessage().contains("token")) {
             message = "Invalid or expired authentication token";
         }
-        
+
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.UNAUTHORIZED.value(),
                 message,
                 request.getDescription(false),
                 LocalDateTime.now()
         );
-        
+
         return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
     }
 
@@ -121,14 +129,14 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.FORBIDDEN)
     public ResponseEntity<ErrorResponse> handleAccessDeniedException(AccessDeniedException ex, WebRequest request) {
         log.error("Access denied: {}", ex.getMessage(), ex);
-        
+
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.FORBIDDEN.value(),
                 "You don't have permission to access this resource",
                 request.getDescription(false),
                 LocalDateTime.now()
         );
-        
+
         return new ResponseEntity<>(errorResponse, HttpStatus.FORBIDDEN);
     }
 
@@ -142,19 +150,19 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ResponseEntity<ErrorResponse> handleJwtException(JwtException ex, WebRequest request) {
         log.error("JWT token error: {}", ex.getMessage(), ex);
-        
+
         String message = "Authentication token error";
         if (ex instanceof ExpiredJwtException) {
             message = "Your session has expired. Please login again.";
         }
-        
+
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.UNAUTHORIZED.value(),
                 message,
                 request.getDescription(false),
                 LocalDateTime.now()
         );
-        
+
         return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
     }
 
@@ -162,14 +170,14 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ResponseEntity<ErrorResponse> handleAllUncaughtException(Exception ex, WebRequest request) {
         log.error("Unexpected error occurred: {}", ex.getMessage(), ex);
-        
+
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "An unexpected error occurred. Please try again later or contact support.",
                 request.getDescription(false),
                 LocalDateTime.now()
         );
-        
+
         return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
@@ -185,7 +193,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(status).body(errorResponse);
     }
 
-    // Helper inner class for structured error responses
     private static class ErrorResponse {
         private int status;
         private String error;
@@ -193,81 +200,78 @@ public class GlobalExceptionHandler {
         private String path;
         private LocalDateTime timestamp;
         private Map<String, String> details;
-        
-        // Default constructor needed for builder
+
         public ErrorResponse() {
         }
-        
-        // Constructor for new implementations
+
         public ErrorResponse(int status, String message, String path, LocalDateTime timestamp) {
             this.status = status;
             this.message = message;
             this.path = path;
             this.timestamp = timestamp;
         }
-        
+
         public static ErrorResponseBuilder builder() {
             return new ErrorResponseBuilder();
         }
-        
+
         public int getStatus() {
             return status;
         }
-        
+
         public String getError() {
             return error;
         }
-        
+
         public String getMessage() {
             return message;
         }
-        
+
         public String getPath() {
             return path;
         }
-        
+
         public LocalDateTime getTimestamp() {
             return timestamp;
         }
-        
+
         public Map<String, String> getDetails() {
             return details;
         }
-        
-        // Static builder class
+
         public static class ErrorResponseBuilder {
             private final ErrorResponse response = new ErrorResponse();
-            
+
             public ErrorResponseBuilder status(int status) {
                 response.status = status;
                 return this;
             }
-            
+
             public ErrorResponseBuilder error(String error) {
                 response.error = error;
                 return this;
             }
-            
+
             public ErrorResponseBuilder message(String message) {
                 response.message = message;
                 return this;
             }
-            
+
             public ErrorResponseBuilder path(String path) {
                 response.path = path;
                 return this;
             }
-            
+
             public ErrorResponseBuilder timestamp(LocalDateTime timestamp) {
                 response.timestamp = timestamp;
                 return this;
             }
-            
+
             public ErrorResponseBuilder details(Map<String, String> details) {
                 response.details = details;
                 return this;
             }
-            
+
             public ErrorResponse build() {
                 return response;
             }

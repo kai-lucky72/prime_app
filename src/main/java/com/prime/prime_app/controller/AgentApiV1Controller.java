@@ -14,6 +14,7 @@ import com.prime.prime_app.service.ClientService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.ValidationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -118,114 +120,77 @@ public class AgentApiV1Controller {
     )
     @GetMapping("/performance")
     @PreAuthorize("hasRole('ROLE_AGENT')")
-    public ResponseEntity<PerformanceReportResponse> getPerformanceReport(@Valid @RequestBody PerformanceReportRequest request) {
+    public ResponseEntity<PerformanceReportResponse> getPerformanceReport(
+            @RequestParam("period") String period) {
         User currentUser = authService.getCurrentUser();
         log.debug("Performance report requested by agent: {}", currentUser.getEmail());
-        
-        PerformanceReportResponse response = agentService.getPerformanceReport(currentUser, request);
-        
+
+        // Validate period
+        if (!Arrays.asList("DAILY", "WEEKLY", "MONTHLY").contains(period.toUpperCase())) {
+            throw new ValidationException("Invalid period. Must be one of: DAILY, WEEKLY, MONTHLY");
+        }
+
+        PerformanceReportResponse response = agentService.getPerformanceReport(currentUser, period);
         return ResponseEntity.ok(response);
     }
-    
+
     @Operation(
         summary = "Get daily clients breakdown",
         description = "Get detailed breakdown of clients by day for the specified period"
     )
     @GetMapping("/performance/clients")
     @PreAuthorize("hasRole('ROLE_AGENT')")
-    public ResponseEntity<?> getDailyClientsBreakdown(
-            @RequestParam(defaultValue = "DAILY") String period) {
-        try {
-            User currentUser = authService.getCurrentUser();
-            log.debug("Daily clients breakdown requested by agent: {}", currentUser.getEmail());
-            
-            PerformanceReportRequest request = new PerformanceReportRequest();
-            try {
-                request.setPeriod(PerformanceReportRequest.Period.valueOf(period.toUpperCase()));
-            } catch (IllegalArgumentException e) {
-                request.setPeriod(PerformanceReportRequest.Period.DAILY);
-            }
-            
-            PerformanceReportResponse response = agentService.getPerformanceReport(currentUser, request);
-            
-            return ResponseEntity.ok(response.getDaily_clients_count());
-        } catch (Exception e) {
-            log.error("Error retrieving client breakdown: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of(
-                    "status", 500,
-                    "error", e.getMessage(),
-                    "message", "An unexpected error occurred. Please try again later or contact support.",
-                    "path", "/api/v1/agent/performance/clients"
-                ));
+    public ResponseEntity<Map<String, Integer>> getDailyClientsBreakdown(
+            @RequestParam("period") String period) {
+        User currentUser = authService.getCurrentUser();
+        log.debug("Daily clients breakdown requested by agent: {}", currentUser.getEmail());
+
+        // Validate period
+        if (!Arrays.asList("DAILY", "WEEKLY", "MONTHLY").contains(period.toUpperCase())) {
+            throw new ValidationException("Invalid period. Must be one of: DAILY, WEEKLY, MONTHLY");
         }
+
+        PerformanceReportResponse response = agentService.getPerformanceReport(currentUser, period);
+        return ResponseEntity.ok(response.getDaily_clients_count());
     }
-    
+
     @Operation(
         summary = "Get sectors breakdown",
         description = "Get detailed breakdown of sectors worked in by day for the specified period"
     )
     @GetMapping("/performance/sectors")
     @PreAuthorize("hasRole('ROLE_AGENT')")
-    public ResponseEntity<?> getSectorsBreakdown(
-            @RequestParam(defaultValue = "DAILY") String period) {
-        try {
-            User currentUser = authService.getCurrentUser();
-            log.debug("Sectors breakdown requested by agent: {}", currentUser.getEmail());
-            
-            PerformanceReportRequest request = new PerformanceReportRequest();
-            try {
-                request.setPeriod(PerformanceReportRequest.Period.valueOf(period.toUpperCase()));
-            } catch (IllegalArgumentException e) {
-                request.setPeriod(PerformanceReportRequest.Period.DAILY);
-            }
-            
-            PerformanceReportResponse response = agentService.getPerformanceReport(currentUser, request);
-            
-            return ResponseEntity.ok(response.getDaily_sectors());
-        } catch (Exception e) {
-            log.error("Error retrieving sectors breakdown: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of(
-                    "status", 500,
-                    "error", e.getMessage(),
-                    "message", "An unexpected error occurred. Please try again later or contact support.",
-                    "path", "/api/v1/agent/performance/sectors"
-                ));
+    public ResponseEntity<Map<String, List<String>>> getSectorsBreakdown(
+            @RequestParam("period") String period) {
+        User currentUser = authService.getCurrentUser();
+        log.debug("Sectors breakdown requested by agent: {}", currentUser.getEmail());
+
+        // Validate period
+        if (!Arrays.asList("DAILY", "WEEKLY", "MONTHLY").contains(period.toUpperCase())) {
+            throw new ValidationException("Invalid period. Must be one of: DAILY, WEEKLY, MONTHLY");
         }
+
+        PerformanceReportResponse response = agentService.getPerformanceReport(currentUser, period);
+        return ResponseEntity.ok(response.getDaily_sectors());
     }
-    
+
     @Operation(
         summary = "Get work status breakdown",
         description = "Get detailed breakdown of work status by day for the specified period"
     )
     @GetMapping("/performance/work-status")
     @PreAuthorize("hasRole('ROLE_AGENT')")
-    public ResponseEntity<?> getWorkStatusBreakdown(
-            @RequestParam(defaultValue = "DAILY") String period) {
-        try {
-            User currentUser = authService.getCurrentUser();
-            log.debug("Work status breakdown requested by agent: {}", currentUser.getEmail());
-            
-            PerformanceReportRequest request = new PerformanceReportRequest();
-            try {
-                request.setPeriod(PerformanceReportRequest.Period.valueOf(period.toUpperCase()));
-            } catch (IllegalArgumentException e) {
-                request.setPeriod(PerformanceReportRequest.Period.DAILY);
-            }
-            
-            PerformanceReportResponse response = agentService.getPerformanceReport(currentUser, request);
-            
-            return ResponseEntity.ok(response.getWork_status());
-        } catch (Exception e) {
-            log.error("Error retrieving work status breakdown: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of(
-                    "status", 500,
-                    "error", e.getMessage(),
-                    "message", "An unexpected error occurred. Please try again later or contact support.",
-                    "path", "/api/v1/agent/performance/work-status"
-                ));
+    public ResponseEntity<Map<String, String>> getWorkStatusBreakdown(
+            @RequestParam("period") String period) {
+        User currentUser = authService.getCurrentUser();
+        log.debug("Work status breakdown requested by agent: {}", currentUser.getEmail());
+
+        // Validate period
+        if (!Arrays.asList("DAILY", "WEEKLY", "MONTHLY").contains(period.toUpperCase())) {
+            throw new ValidationException("Invalid period. Must be one of: DAILY, WEEKLY, MONTHLY");
         }
+
+        PerformanceReportResponse response = agentService.getPerformanceReport(currentUser, period);
+        return ResponseEntity.ok(response.getWork_status());
     }
-} 
+}

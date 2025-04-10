@@ -8,6 +8,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -24,14 +25,15 @@ public class FileStorageService {
     /**
      * Initialize the file storage service
      */
+    @PostConstruct
     public void init() {
         try {
             Files.createDirectories(Paths.get(uploadDir));
             Files.createDirectories(Paths.get(uploadDir + "/profile-images"));
             Files.createDirectories(Paths.get(uploadDir + "/reports"));
-            log.info("Created file upload directories");
+            log.info("Created file upload directories: {}", uploadDir);
         } catch (IOException e) {
-            log.error("Could not initialize file storage", e);
+            log.error("Could not initialize file storage: {}", e.getMessage(), e);
             throw new RuntimeException("Could not initialize file storage", e);
         }
     }
@@ -115,6 +117,7 @@ public class FileStorageService {
             Path reportsDir = Paths.get(uploadDir + "/reports");
             if (!Files.exists(reportsDir)) {
                 Files.createDirectories(reportsDir);
+                log.info("Created reports directory: {}", reportsDir);
             }
             
             // Create the full path
@@ -127,12 +130,13 @@ public class FileStorageService {
             
             // Copy the input stream to the destination file
             Files.copy(inputStream, destinationFile, StandardCopyOption.REPLACE_EXISTING);
+            log.info("Successfully saved report to: {}", destinationFile);
             
             // Return the relative path
             return "/reports/" + filename;
         } catch (IOException e) {
-            log.error("Failed to store PDF report", e);
-            throw new RuntimeException("Failed to store PDF report", e);
+            log.error("Failed to store PDF report: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to store PDF report: " + e.getMessage(), e);
         }
     }
 } 
