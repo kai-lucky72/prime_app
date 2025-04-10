@@ -26,7 +26,7 @@ public interface PerformanceRepository extends JpaRepository<Performance, Long> 
         AND c.time_of_interaction BETWEEN :startDate AND :endDate
         UNION ALL
         SELECT 'activeAgents' as metric, COUNT(DISTINCT a.agent_id) as value
-        FROM attendance a
+        FROM attendances a
         JOIN users u ON a.agent_id = u.id
         WHERE u.manager_id = :managerId
         AND a.check_in_time BETWEEN :startDate AND :endDate
@@ -35,7 +35,7 @@ public interface PerformanceRepository extends JpaRepository<Performance, Long> 
         FROM (
             SELECT DATE(a.check_in_time) as check_date, a.agent_id, 
                    COUNT(DISTINCT c.id) as client_count
-            FROM attendance a
+            FROM attendances a
             JOIN users u ON a.agent_id = u.id
             LEFT JOIN clients c ON c.agent_id = a.agent_id 
                 AND DATE(c.time_of_interaction) = DATE(a.check_in_time)

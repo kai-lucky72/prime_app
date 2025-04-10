@@ -63,7 +63,7 @@ public class ManagerService {
                     User agent = assignment.getAgent();
                     Attendance latestAttendance = attendanceRepository.findLatestByAgent(agent.getId())
                             .orElse(null);
-                    
+
                     String attendanceStatus = getColorCodedStatus(latestAttendance);
                     int clientsServed = clientRepository.countTodaysClientsByAgent(agent.getId());
 
@@ -85,9 +85,9 @@ public class ManagerService {
         if (attendance == null) {
             return "NO_WORK:#FF0000"; // Red for no attendance
         }
-        
+
         int clientCount = clientRepository.countTodaysClientsByAgent(attendance.getAgent().getId());
-        
+
         if (attendance.getStatus() == Attendance.AttendanceStatus.PRESENT && clientCount > 0) {
             return "WORKED:#00FF00"; // Green for worked with clients
         } else if (attendance.getStatus() == Attendance.AttendanceStatus.PRESENT) {
@@ -101,22 +101,29 @@ public class ManagerService {
     public void designateLeader(Long managerId, Long agentId) {
         User manager = userRepository.findById(managerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Manager not found"));
-        
+
         User agent = userRepository.findById(agentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Agent not found"));
 
-        // Remove existing leader if any
-        managerAssignmentRepository.findByManagerAndIsLeaderTrue(manager)
-                .ifPresent(existing -> {
-                    existing.setLeader(false);
-                    managerAssignmentRepository.save(existing);
-                });
+        // Check if a leader already exists for this manager
+        Optional<ManagerAssignedAgent> existingLeader = managerAssignmentRepository.findByManagerAndIsLeaderTrue(manager);
+        if (existingLeader.isPresent()) {
+            ManagerAssignedAgent currentLeader = existingLeader.get();
+            if (!currentLeader.getAgent().getId().equals(agentId)) {
+                // If the new leader is different from the current leader, demote the current leader
+                currentLeader.setLeader(false);
+                managerAssignmentRepository.save(currentLeader);
+            } else {
+                // If the agent is already the leader, no further action is needed
+                return;
+            }
+        }
 
-        // Set new leader
+        // Set the new leader
         ManagerAssignedAgent assignment = managerAssignmentRepository
                 .findByManagerAndAgent(manager, agent)
                 .orElseThrow(() -> new IllegalStateException("Agent not assigned to this manager"));
-        
+
         assignment.setLeader(true);
         managerAssignmentRepository.save(assignment);
     }
@@ -146,7 +153,7 @@ public class ManagerService {
 
         // Create new agent with default password
         String username = request.getEmail(); // Use email as username
-        
+
         User agent = User.builder()
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
@@ -168,11 +175,11 @@ public class ManagerService {
 
         userRepository.save(agent);
 
-        // Create manager-agent assignment
+        // Create manager-agent assignment with isLeader = false
         ManagerAssignedAgent assignment = ManagerAssignedAgent.builder()
                 .manager(manager)
                 .agent(agent)
-                .isLeader(false)
+                .isLeader(false) // Always false for new agents
                 .build();
 
         managerAssignmentRepository.save(assignment);
@@ -182,12 +189,12 @@ public class ManagerService {
     public void removeAgent(Long managerId, Long agentId) {
         User manager = userRepository.findById(managerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Manager not found"));
-        
+
         User agent = userRepository.findById(agentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Agent not found"));
 
         managerAssignmentRepository.deleteByManagerAndAgent(manager, agent);
-        
+
         // Remove manager reference
         agent.setManager(null);
         userRepository.save(agent);
@@ -197,39 +204,39 @@ public class ManagerService {
     public void updateAgent(Long managerId, Long agentId, AgentManagementRequest request) {
         User manager = userRepository.findById(managerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Manager not found"));
-        
+
         User agent = userRepository.findById(agentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Agent not found"));
-        
+
         // Verify that the agent belongs to this manager
         ManagerAssignedAgent assignment = managerAssignmentRepository
                 .findByManagerAndAgent(manager, agent)
                 .orElseThrow(() -> new IllegalStateException("Agent not assigned to this manager"));
-        
+
         // Check if email is being changed and validate it's not already used by another user
-        if (!agent.getEmail().equals(request.getEmail()) && 
+        if (!agent.getEmail().equals(request.getEmail()) &&
                 userRepository.existsByEmail(request.getEmail())) {
             throw new IllegalStateException("Email already exists");
         }
-        
+
         // Check if workId is being changed and validate it's not already used by another user
-        if (!agent.getWorkId().equals(request.getWorkId()) && 
+        if (!agent.getWorkId().equals(request.getWorkId()) &&
                 userRepository.existsByWorkId(request.getWorkId())) {
             throw new IllegalStateException("Work ID already exists");
         }
-        
+
         // Check if nationalId is being changed and validate it's not already used by another user
-        if ((agent.getNationalId() == null || !agent.getNationalId().equals(request.getNationalId())) && 
+        if ((agent.getNationalId() == null || !agent.getNationalId().equals(request.getNationalId())) &&
                 userRepository.existsByNationalId(request.getNationalId())) {
             throw new IllegalStateException("National ID already exists");
         }
-        
+
         // Check if phoneNumber is being changed and validate it's not already used by another user
-        if ((agent.getPhoneNumber() == null || !agent.getPhoneNumber().equals(request.getPhoneNumber())) && 
+        if ((agent.getPhoneNumber() == null || !agent.getPhoneNumber().equals(request.getPhoneNumber())) &&
                 userRepository.existsByPhoneNumber(request.getPhoneNumber())) {
             throw new IllegalStateException("Phone number already exists");
         }
-        
+
         // Update the agent details
         agent.setFirstName(request.getFirstName());
         agent.setLastName(request.getLastName());
@@ -240,7 +247,7 @@ public class ManagerService {
         agent.setNationalId(request.getNationalId());
         agent.setPhoneNumber(request.getPhoneNumber());
         agent.setUpdatedAt(LocalDateTime.now());
-        
+
         userRepository.save(agent);
     }
 
@@ -252,11 +259,11 @@ public class ManagerService {
         return managerAssignmentRepository.findByManager(manager).stream()
                 .map(assignment -> {
                     User agent = assignment.getAgent();
-                    
+
                     int totalClients = clientRepository.countByAgentAndDateBetween(agent.getId(), startDate, endDate);
                     int daysWorked = attendanceRepository.countWorkingDaysByAgent(agent.getId(), startDate, endDate);
                     List<String> sectorsWorked = clientRepository.findDistinctSectorsByAgent(agent.getId(), startDate, endDate);
-                    
+
                     // Get today's comment for the agent if it exists
                     String dailyComment = "";
                     try {
@@ -267,9 +274,10 @@ public class ManagerService {
                     } catch (Exception e) {
                         // Ignore errors when fetching comments
                     }
-                    
+
                     return ReportsResponse.AgentReportDto.builder()
                             .agentId(agent.getId().toString())
+                            .agentName(agent.getName())
                             .totalClientsEngaged(totalClients)
                             .sectorsWorkedIn(sectorsWorked)
                             .daysWorked(daysWorked)
@@ -293,15 +301,15 @@ public class ManagerService {
                 .orElseThrow(() -> new ResourceNotFoundException("Manager not found"));
 
         List<ManagerAssignedAgent> assignments = managerAssignmentRepository.findByManager(manager);
-        
+
         // Get real-time metrics
         int totalAgents = assignments.size();
         int activeAgents = (int) assignments.stream()
                 .map(ManagerAssignedAgent::getAgent)
                 .filter(agent -> attendanceRepository.existsByAgentAndCheckInTimeBetween(
-                    agent,
-                    LocalDateTime.now().toLocalDate().atStartOfDay(),
-                    LocalDateTime.now().toLocalDate().plusDays(1).atStartOfDay()
+                        agent,
+                        LocalDateTime.now().toLocalDate().atStartOfDay(),
+                        LocalDateTime.now().toLocalDate().plusDays(1).atStartOfDay()
                 ))
                 .count();
 
@@ -309,16 +317,16 @@ public class ManagerService {
         Map<String, Integer> performanceMetrics;
         try {
             performanceMetrics = performanceRepository.getTeamPerformanceMetrics(
-                manager.getId(),
-                LocalDateTime.now().minusDays(30),
-                LocalDateTime.now()
+                    manager.getId(),
+                    LocalDateTime.now().minusDays(30),
+                    LocalDateTime.now()
             );
         } catch (Exception e) {
             // Fallback to hardcoded metrics if query fails
             performanceMetrics = Map.of(
-                "totalClients", 0,
-                "activeAgents", activeAgents,
-                "avgClientsPerDay", 0
+                    "totalClients", 0,
+                    "activeAgents", activeAgents,
+                    "avgClientsPerDay", 0
             );
         }
 
@@ -336,7 +344,7 @@ public class ManagerService {
         // Calculate date range based on the period
         LocalDate endDate = LocalDate.now();
         LocalDate startDate;
-        
+
         switch (period) {
             case DAILY:
                 startDate = endDate; // Today only
@@ -352,35 +360,30 @@ public class ManagerService {
             default:
                 throw new IllegalArgumentException("Invalid period specified");
         }
-        
+
         // Call the existing method with calculated date range
         List<ReportsResponse.AgentReportDto> agentReports = generateReports(
-            manager.getId(), 
-            startDate.atStartOfDay(), 
-            endDate.atTime(23, 59, 59)
+                manager.getId(),
+                startDate.atStartOfDay(),
+                endDate.atTime(23, 59, 59)
         );
-        
+
         // Add detailed data to each agent report
         for (ReportsResponse.AgentReportDto agentReport : agentReports) {
-            // Try to find the agent user
-            User agent = userRepository.findByWorkId(agentReport.getAgentId())
+            User agent = userRepository.findById(Long.valueOf(agentReport.getAgentId()))
                     .orElse(null);
-            
+
             if (agent != null) {
-                // Add daily clients count
                 Map<String, Integer> dailyClientsCount = getDailyClientsCount(agent, startDate, endDate);
                 agentReport.setDailyClientsCount(dailyClientsCount);
-                
-                // Add daily sectors
+
                 Map<String, List<String>> dailySectors = getDailySectors(agent, startDate, endDate);
                 agentReport.setDailySectors(dailySectors);
-                
-                // Add work status
+
                 Map<String, String> workStatus = getWorkStatus(agent, startDate, endDate);
                 agentReport.setWorkStatus(workStatus);
             }
         }
-        
         return ReportsResponse.builder()
                 .agentReports(agentReports)
                 .build();
@@ -391,20 +394,20 @@ public class ManagerService {
      */
     private Map<String, Integer> getDailyClientsCount(User agent, LocalDate startDate, LocalDate endDate) {
         Map<String, Integer> result = new HashMap<>();
-        
+
         // Fill in each day from start to end date
         for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
-            String dayName = date.getDayOfWeek().toString().charAt(0) + 
-                            date.getDayOfWeek().toString().substring(1).toLowerCase();
-            
+            String dayName = date.getDayOfWeek().toString().charAt(0) +
+                    date.getDayOfWeek().toString().substring(1).toLowerCase();
+
             // Count clients for this day
             LocalDateTime dateStart = date.atStartOfDay();
             LocalDateTime dateEnd = date.atTime(23, 59, 59);
             Long count = clientRepository.countByAgentAndTimeRange(agent, dateStart, dateEnd);
-            
+
             result.put(dayName, count != null ? count.intValue() : 0);
         }
-        
+
         return result;
     }
 
@@ -413,12 +416,12 @@ public class ManagerService {
      */
     private Map<String, List<String>> getDailySectors(User agent, LocalDate startDate, LocalDate endDate) {
         Map<String, List<String>> result = new HashMap<>();
-        
+
         // Fill in each day from start to end date
         for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
-            String dayName = date.getDayOfWeek().toString().charAt(0) + 
-                            date.getDayOfWeek().toString().substring(1).toLowerCase();
-            
+            String dayName = date.getDayOfWeek().toString().charAt(0) +
+                    date.getDayOfWeek().toString().substring(1).toLowerCase();
+
             // Get sectors from work logs for this day
             List<String> sectors = workLogRepository.findByAgentAndDate(agent, date)
                     .map(log -> {
@@ -426,7 +429,7 @@ public class ManagerService {
                         return sector != null ? List.of(sector) : new ArrayList<String>();
                     })
                     .orElse(new ArrayList<>());
-            
+
             // If no sectors from work logs, try to get from client data
             if (sectors.isEmpty()) {
                 LocalDateTime dateStart = date.atStartOfDay();
@@ -437,10 +440,10 @@ public class ManagerService {
                     sectors = clientSectors;
                 }
             }
-            
+
             result.put(dayName, sectors);
         }
-        
+
         return result;
     }
 
@@ -449,22 +452,22 @@ public class ManagerService {
      */
     private Map<String, String> getWorkStatus(User agent, LocalDate startDate, LocalDate endDate) {
         Map<String, String> result = new HashMap<>();
-        
+
         // Fill in each day from start to end date
         for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
-            String dayName = date.getDayOfWeek().toString().charAt(0) + 
-                            date.getDayOfWeek().toString().substring(1).toLowerCase();
-            
+            String dayName = date.getDayOfWeek().toString().charAt(0) +
+                    date.getDayOfWeek().toString().substring(1).toLowerCase();
+
             // Check if agent worked on this day
             boolean worked = workLogRepository.findByAgentAndDate(agent, date)
                     .map(log -> WorkLog.WorkStatus.WORKED == log.getStatus())
                     .orElse(false);
-            
+
             // Check if agent had clients on this day
             LocalDateTime dateStart = date.atStartOfDay();
             LocalDateTime dateEnd = date.atTime(23, 59, 59);
             Long clientCount = clientRepository.countByAgentAndTimeRange(agent, dateStart, dateEnd);
-            
+
             // Determine work status
             String status;
             if (!worked) {
@@ -474,10 +477,10 @@ public class ManagerService {
             } else {
                 status = "Worked but no clients";
             }
-            
+
             result.put(dayName, status);
         }
-        
+
         return result;
     }
 
