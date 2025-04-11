@@ -51,6 +51,8 @@ public class SecurityConfigExtended {
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers("/test/encode").permitAll()
+                .requestMatchers("/test/ping").permitAll()
+                .requestMatchers("/test/cors-test").permitAll()
                 // Admin endpoints - restricted to ADMIN role only
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/v1/api/admin/**").hasRole("ADMIN")
@@ -128,10 +130,23 @@ public class SecurityConfigExtended {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("*")); // In production, replace with specific origins
+        
+        // Allow multiple origins for development and production
+        configuration.setAllowedOrigins(Arrays.asList(
+            "http://localhost:3000",       // Local development
+            "http://localhost:5173",       // Vite default port
+            "http://127.0.0.1:3000",       // Alternative local address
+            "http://127.0.0.1:5173",       // Alternative local address
+            "https://prime-app.example.com" // Production URL (replace with actual URL)
+        ));
+        
+        // Alternative: Allow all origins (not recommended for production)
+        // configuration.addAllowedOriginPattern("*");
+        
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With"));
-        configuration.setExposedHeaders(List.of("Authorization"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "Accept"));
+        configuration.setExposedHeaders(Arrays.asList("Authorization"));
+        configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
