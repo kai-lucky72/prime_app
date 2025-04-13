@@ -38,6 +38,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.HashMap;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 @Service
 @RequiredArgsConstructor
@@ -313,8 +314,10 @@ public class ManagerService {
                 ))
                 .count();
 
-        // Get performance metrics with fallback
-        Map<String, Integer> performanceMetrics;
+        // Get performance metrics from database
+        Map<String, Integer> performanceMetrics = new HashMap<>();
+        
+        // Try to get metrics from repository
         try {
             performanceMetrics = performanceRepository.getTeamPerformanceMetrics(
                     manager.getId(),
@@ -322,19 +325,139 @@ public class ManagerService {
                     LocalDateTime.now()
             );
         } catch (Exception e) {
-            // Fallback to hardcoded metrics if query fails
-            performanceMetrics = Map.of(
-                    "totalClients", 0,
-                    "activeAgents", activeAgents,
-                    "avgClientsPerDay", 0
-            );
+            // If repository query fails, calculate directly from data
+            // Count all clients in the last 30 days
+            LocalDateTime thirtyDaysAgo = LocalDateTime.now().minusDays(30);
+            int totalClients = 0;
+            
+            for (ManagerAssignedAgent assignment : assignments) {
+                User agent = assignment.getAgent();
+                List<Client> clients = clientRepository.findByAgentAndDateBetween(
+                    agent,
+                    thirtyDaysAgo,
+                    LocalDateTime.now()
+                );
+                totalClients += clients.size();
+            }
+            
+            // Calculate average clients per day
+            int avgClientsPerDay = 0;
+            if (totalClients > 0) {
+                avgClientsPerDay = totalClients / 30; // simple average over 30 days
+            }
+            
+            performanceMetrics.put("totalClients", totalClients);
+            performanceMetrics.put("activeAgents", activeAgents);
+            performanceMetrics.put("avgClientsPerDay", avgClientsPerDay);
         }
+        
+        // Generate weekly data
+        List<ManagerDashboardResponse.WeeklyDataEntry> weeklyData = generateWeeklyData(manager);
+        
+        // Generate performance data
+        List<ManagerDashboardResponse.PerformanceDataEntry> performanceData = generatePerformanceData(assignments);
 
         return ManagerDashboardResponse.builder()
                 .totalAgents(totalAgents)
                 .activeAgents(activeAgents)
                 .performanceMetrics(performanceMetrics)
+                .weeklyData(weeklyData)
+                .performanceData(performanceData)
                 .build();
+    }
+
+    /**
+     * Generate weekly data for dashboard
+     */
+    private List<ManagerDashboardResponse.WeeklyDataEntry> generateWeeklyData(User manager) {
+        List<ManagerDashboardResponse.WeeklyDataEntry> weeklyData = new ArrayList<>();
+        
+        // Get current week start and end dates
+        LocalDate today = LocalDate.now();
+        LocalDate startOfWeek = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        
+        for (int i = 0; i < 7; i++) {
+            LocalDate currentDay = startOfWeek.plusDays(i);
+            String dayLetter = currentDay.getDayOfWeek().toString().substring(0, 1);
+            
+            // Get actual client count from database for this day
+            List<Client> clients = clientRepository.findByManagerAndDateBetween(
+                manager, 
+                currentDay.atStartOfDay(), 
+                currentDay.atTime(23, 59, 59)
+            );
+            
+            int clientCount = clients != null ? clients.size() : 0;
+            
+            weeklyData.add(ManagerDashboardResponse.WeeklyDataEntry.builder()
+                .day(dayLetter)
+                .clients(clientCount)
+                .build());
+        }
+        
+        return weeklyData;
+    }
+
+    /**
+     * Generate performance data for dashboard
+     */
+    private List<ManagerDashboardResponse.PerformanceDataEntry> generatePerformanceData(List<ManagerAssignedAgent> assignments) {
+        List<ManagerDashboardResponse.PerformanceDataEntry> performanceData = new ArrayList<>();
+        
+        int totalAgents = assignments.size();
+        
+        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
+        LocalDateTime todayEnd = LocalDate.now().atTime(23, 59, 59);
+        
+        // Count active agents (who have checked in today)
+        int activeCount = 0;
+        int startedButNoClientsCount = 0;
+        
+        for (ManagerAssignedAgent assignment : assignments) {
+            User agent = assignment.getAgent();
+            boolean checkedIn = attendanceRepository.existsByAgentAndCheckInTimeBetween(agent, todayStart, todayEnd);
+            
+            if (checkedIn) {
+                // Check if they have clients
+                Long clientCount = clientRepository.countByAgentAndTimeRange(agent, todayStart, todayEnd);
+                if (clientCount != null && clientCount > 0) {
+                    activeCount++;
+                } else {
+                    startedButNoClientsCount++;
+                }
+            }
+        }
+        
+        int notStartedCount = totalAgents - activeCount - startedButNoClientsCount;
+        
+        // Calculate percentages
+        int activePercentage = totalAgents > 0 ? (activeCount * 100) / totalAgents : 0;
+        int notStartedPercentage = totalAgents > 0 ? (notStartedCount * 100) / totalAgents : 0;
+        int startedButNoClientsPercentage = totalAgents > 0 ? (startedButNoClientsCount * 100) / totalAgents : 0;
+        
+        // Add up to 100%
+        int sum = activePercentage + notStartedPercentage + startedButNoClientsPercentage;
+        if (sum != 100 && sum > 0) {
+            // Adjust to make sure percentages add up to 100%
+            activePercentage += (100 - sum);
+        }
+        
+        performanceData.add(ManagerDashboardResponse.PerformanceDataEntry.builder()
+            .name("Active")
+            .value(activePercentage)
+            .build());
+            
+        performanceData.add(ManagerDashboardResponse.PerformanceDataEntry.builder()
+            .name("Not Started")
+            .value(notStartedPercentage)
+            .build());
+            
+        performanceData.add(ManagerDashboardResponse.PerformanceDataEntry.builder()
+            .name("Started but no clients")
+            .value(startedButNoClientsPercentage)
+            .build());
+        
+        return performanceData;
     }
 
     /**
